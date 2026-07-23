@@ -1,14 +1,14 @@
 {
-    "name": "Template by UwU Apps",
-    "short_name": "UwU Template",
-    "description": "A simple template app; view live template at a glance!",
+    "name": "Malaysia Boleh by UwU Apps",
+    "short_name": "Malaysia Boleh",
+    "description": "Can is can, the original!",
     "icons": [{
-            "src": "templateicon1-192.png",
+            "src": "MYB-192.png",
             "type": "image/png",
             "sizes": "192x192"
         },
         {
-            "src": "templateicon1-512.png",
+            "src": "MYB-512.png",
             "type": "image/png",
             "sizes": "512x512"
         }
@@ -32,7 +32,7 @@
     "display": "standalone",
     "display_override": ["fullscreen", "minimal-ui", "window-controls-overlay"],
     "orientation": "any",
-    "id": "template",
+    "id": "malaysia-boleh",
     "dir": "ltr",
     "scope": "/",
     "lang": "en",
