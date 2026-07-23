@@ -1,12 +1,13 @@
-const CACHE = "template-offline-v1";
+const CACHE = "malaysia-boleh-v1";
 
 const ASSETS = [
   "/",
   "/index.html",
   "/style.css",
   "/script.js",
-  "/templateicon1-192.png",
-  "/templateicon1-512.png",
+  "/MYB-main.png",
+  "/MYB-192.png",
+  "/MYB-512.png",
   "/favicon.ico",
   "/manifest.json"
 ];
