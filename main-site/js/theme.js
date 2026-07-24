@@ -97,7 +97,7 @@
     const toggle = document.getElementById('themeToggle');
     if (!toggle) return;
     if (window.Icons && !toggle.dataset.iconSet) {
-      toggle.innerHTML = window.Icons.html('palette', { size: 18 }) + '<span class="btn-label">Theme</span>';
+      toggle.innerHTML = window.Icons.html('sun', { size: 18 }) + '<span class="btn-label">Theme</span>';
       toggle.dataset.iconSet = '1';
       toggle.setAttribute('aria-label', 'Choose theme');
     }

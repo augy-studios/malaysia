@@ -47,6 +47,12 @@ img, svg {
   max-width: 100%;
 }
 
+input, select, textarea, button {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 a {
   color: var(--brand-strong);
   text-decoration: none;
