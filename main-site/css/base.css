@@ -231,8 +231,8 @@ table {
 /* -- Hero -- */
 
 .hero {
-  padding: 48px 0 24px;
-  text-align: center;
+  padding: 40px 0 24px;
+  text-align: left;
 }
 
 .hero h1 {
@@ -244,7 +244,7 @@ table {
 .hero p {
   color: var(--muted);
   max-width: 560px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* -- Page grid (directory cards) -- */
