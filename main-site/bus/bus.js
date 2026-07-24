@@ -2,6 +2,7 @@
   "use strict";
 
   const STATIC_CACHE_MS = 60 * 60 * 1000; // 1 hour, generous - schedules barely change
+  const MAX_TIMES_SHOWN = 40; // per route, per stop - defensive cap on high-frequency routes
   const PRASARANA_CATEGORIES = ["rapid-bus-kl", "rapid-bus-penang", "rapid-bus-mrtfeeder"];
   const CATEGORY_LABELS = {
     "rapid-bus-kl": "Rapid Bus KL",
@@ -85,7 +86,7 @@
   const STATIC_FEEDS = {
     prasarana: {
       endpoint: (category) => `/api/bus-prasarana?category=${encodeURIComponent(category)}`,
-      cacheKey: (category) => `bus-static-prasarana-${category}-v2`,
+      cacheKey: (category) => `bus-static-prasarana-${category}-v3`,
       stateEl: "prasaranaState",
       contentEl: "prasaranaContent",
       routeListEl: "prasaranaRouteList",
@@ -99,7 +100,7 @@
     },
     mybas: {
       endpoint: () => "/api/bus-mybas-johor",
-      cacheKey: () => "bus-static-mybas-johor-v2",
+      cacheKey: () => "bus-static-mybas-johor-v3",
       stateEl: "mybasState",
       contentEl: "mybasContent",
       routeListEl: "mybasRouteList",
@@ -114,8 +115,8 @@
   };
 
   const feedState = {
-    prasarana: { routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: "" },
-    mybas: { routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: "" },
+    prasarana: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null },
+    mybas: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null },
   };
 
   function readStaticCache(key) {
@@ -198,6 +199,7 @@
   function selectRoute(kind, routeId) {
     const s = feedState[kind];
     s.selectedRouteId = (s.selectedRouteId === routeId) ? null : routeId;
+    s.expandedStopId = null;
     renderRouteList(kind, currentSearchValue(STATIC_FEEDS[kind].routeSearchEl));
     refreshStopList(kind);
     updateFilterNote(kind);
@@ -224,7 +226,6 @@
   }
 
   function refreshStopList(kind) {
-    const cfg = STATIC_FEEDS[kind];
     const s = feedState[kind];
     let pool = s.stops;
     if (s.selectedRouteId) {
@@ -232,23 +233,74 @@
       const allowedSet = allowed ? new Set(allowed) : new Set();
       pool = pool.filter((st) => allowedSet.has(st.stop_id));
     }
-    renderStopList(cfg.stopListEl, filterStops(pool, s.stopQuery));
+    renderStopList(kind, filterStops(pool, s.stopQuery));
   }
 
-  function renderStopList(listId, stops) {
-    const el = document.getElementById(listId);
+  function toggleStopSchedule(kind, stopId) {
+    const s = feedState[kind];
+    s.expandedStopId = (s.expandedStopId === stopId) ? null : stopId;
+    refreshStopList(kind);
+  }
+
+  function fmtScheduleTime(t) {
+    const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(t);
+    if (!m) return t;
+    let h = parseInt(m[1], 10);
+    const nextDay = h >= 24;
+    h = h % 24;
+    const period = h >= 12 ? "pm" : "am";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${m[2]}${period}${nextDay ? " (+1d)" : ""}`;
+  }
+
+  function buildScheduleHtml(kind, stopId) {
+    const s = feedState[kind];
+    const schedule = s.stopSchedule[stopId] || {};
+    let routeIds = Object.keys(schedule);
+    if (s.selectedRouteId) routeIds = routeIds.filter((id) => id === s.selectedRouteId);
+
+    if (!routeIds.length) {
+      return '<p class="stop-schedule-empty">No scheduled times available for this stop.</p>';
+    }
+
+    return routeIds.map((routeId) => {
+      const route = s.routes.find((r) => r.route_id === routeId);
+      const label = route ? (route.route_short_name || route.route_long_name || routeId) : routeId;
+      const times = schedule[routeId] || [];
+      const shown = times.slice(0, MAX_TIMES_SHOWN);
+      const extra = times.length - shown.length;
+      return `<div class="stop-schedule-route">` +
+        (routeIds.length > 1 ? `<span class="badge">${escapeHtml(label)}</span>` : "") +
+        `<div class="stop-schedule-times">` +
+        shown.map((t) => `<span class="time-chip">${escapeHtml(fmtScheduleTime(t))}</span>`).join("") +
+        (extra > 0 ? `<span class="time-chip time-chip-more">+${extra} more</span>` : "") +
+        `</div></div>`;
+    }).join("");
+  }
+
+  function renderStopList(kind, stops) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const el = document.getElementById(cfg.stopListEl);
     if (!stops.length) {
       el.innerHTML = '<li class="directory-empty">No matching stops.</li>';
       return;
     }
-    el.innerHTML = stops.slice(0, 300).map((s) => {
-      const name = s.stop_name || s.stop_id || "Unnamed stop";
-      const badge = CATEGORY_LABELS[s.category] || s.category || "";
-      const lat = s.stop_lat, lon = s.stop_lon;
+    el.innerHTML = stops.slice(0, 300).map((stop) => {
+      const name = stop.stop_name || stop.stop_id || "Unnamed stop";
+      const badge = CATEGORY_LABELS[stop.category] || stop.category || "";
+      const lat = stop.stop_lat, lon = stop.stop_lon;
       const sub = (lat && lon) ? `${lat}, ${lon}` : "";
-      return `<li class="directory-item">` +
+      const hasSchedule = stop.stop_id && s.stopSchedule[stop.stop_id] &&
+        Object.keys(s.stopSchedule[stop.stop_id]).length;
+      const isExpanded = s.expandedStopId === stop.stop_id;
+      const cls = "directory-item" + (hasSchedule ? " is-clickable" : "") + (isExpanded ? " is-selected" : "");
+      const attrs = hasSchedule ? ` data-stop-id="${escapeHtml(stop.stop_id)}" role="button" tabindex="0"` : "";
+      const scheduleHtml = isExpanded ? `<div class="stop-schedule">${buildScheduleHtml(kind, stop.stop_id)}</div>` : "";
+      return `<li class="${cls}"${attrs}>` +
         `<span class="item-title">${escapeHtml(name)}${badge ? ` <span class="badge">${escapeHtml(badge)}</span>` : ""}</span>` +
         `${sub ? `<span class="item-sub">${escapeHtml(sub)}</span>` : ""}` +
+        scheduleHtml +
         `</li>`;
     }).join("");
   }
@@ -264,8 +316,10 @@
     feedState[kind].routes = routes;
     feedState[kind].stops = stops;
     feedState[kind].routeStops = (payload.routeStops && typeof payload.routeStops === "object") ? payload.routeStops : {};
+    feedState[kind].stopSchedule = (payload.stopSchedule && typeof payload.stopSchedule === "object") ? payload.stopSchedule : {};
     feedState[kind].selectedRouteId = null;
     feedState[kind].stopQuery = "";
+    feedState[kind].expandedStopId = null;
 
     if (!routes.length && !stops.length) {
       contentEl.hidden = true;
@@ -306,6 +360,23 @@
     if (clearBtn && !clearBtn.dataset.wired) {
       clearBtn.dataset.wired = "1";
       clearBtn.addEventListener("click", () => selectRoute(kind, null));
+    }
+
+    const stopListEl = document.getElementById(cfg.stopListEl);
+    if (!stopListEl.dataset.clickWired) {
+      stopListEl.dataset.clickWired = "1";
+      stopListEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".directory-item[data-stop-id]");
+        if (item) toggleStopSchedule(kind, item.getAttribute("data-stop-id"));
+      });
+      stopListEl.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const item = e.target.closest(".directory-item[data-stop-id]");
+        if (item) {
+          e.preventDefault();
+          toggleStopSchedule(kind, item.getAttribute("data-stop-id"));
+        }
+      });
     }
   }
 

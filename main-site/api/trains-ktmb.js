@@ -151,14 +151,29 @@ module.exports = async (req, res) => {
     trips.forEach(t => { if (t.trip_id) tripRoute[t.trip_id] = t.route_id; });
 
     const routeStopSets = {};
+    const stopScheduleSets = {}; // stop_id -> route_id -> Set(HH:MM:SS)
     stopTimes.forEach(st => {
       const routeId = tripRoute[st.trip_id];
       if (!routeId || !st.stop_id) return;
       if (!routeStopSets[routeId]) routeStopSets[routeId] = new Set();
       routeStopSets[routeId].add(st.stop_id);
+
+      const time = st.departure_time || st.arrival_time;
+      if (!time) return;
+      if (!stopScheduleSets[st.stop_id]) stopScheduleSets[st.stop_id] = {};
+      if (!stopScheduleSets[st.stop_id][routeId]) stopScheduleSets[st.stop_id][routeId] = new Set();
+      stopScheduleSets[st.stop_id][routeId].add(time);
     });
     const routeStops = {};
     Object.keys(routeStopSets).forEach(id => { routeStops[id] = Array.from(routeStopSets[id]); });
+
+    const stopSchedule = {};
+    Object.keys(stopScheduleSets).forEach(stopId => {
+      stopSchedule[stopId] = {};
+      Object.keys(stopScheduleSets[stopId]).forEach(routeId => {
+        stopSchedule[stopId][routeId] = Array.from(stopScheduleSets[stopId][routeId]).sort();
+      });
+    });
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800');
     res.status(200).json({
@@ -168,7 +183,8 @@ module.exports = async (req, res) => {
       counts: { routes: routes.length, stops: stops.length },
       routes,
       stops,
-      routeStops
+      routeStops,
+      stopSchedule
     });
   } catch (err) {
     const isAbort = err && err.name === 'AbortError';

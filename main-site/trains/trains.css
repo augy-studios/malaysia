@@ -196,6 +196,52 @@
   color: var(--ink);
 }
 
+.stop-schedule {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+}
+
+.stop-schedule-route {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stop-schedule-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.time-chip {
+  display: inline-block;
+  font-size: 0.78rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.time-chip-more {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.stop-schedule-empty {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .route-filter-clear {
   background: none;
   border: none;
