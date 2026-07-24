@@ -11,6 +11,7 @@
     check: '<polyline points="20 6 9 17 4 12"/>',
     chevronRight: '<polyline points="9 18 15 12 9 6"/>',
     chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
+    heart: '<path d="M12 21s-6.7-4.35-9.3-8.28C1.1 10.8 1.3 8 3.4 6.4c1.8-1.4 4.4-1.1 5.9.6L12 9.6l2.7-2.6c1.5-1.7 4.1-2 5.9-.6 2.1 1.6 2.3 4.4.7 6.32C18.7 16.65 12 21 12 21z" fill="currentColor" stroke="none"/>',
     externalLink: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
     refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
     clock: '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>',

@@ -496,6 +496,13 @@ table {
   text-decoration: underline;
 }
 
+.footer-heart {
+  /* Intentionally a fixed green, independent of the active accent theme. */
+  color: #2f9e44;
+  vertical-align: -2px;
+  margin: 0 1px;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
