@@ -1,6 +1,6 @@
 # Malaysia Boleh
 
-> A free PWA dashboard by UwU Apps surfacing live Malaysian public data through keyless government feeds (data.gov.my). Every page proxies an official public API through a Vercel serverless function with caching and error handling, and renders it as a simple, readable page.
+> A free PWA dashboard by UwU Apps surfacing live Malaysian public data through government feeds (data.gov.my). Every page proxies an official public API through a Vercel serverless function with caching and error handling, and renders it as a simple, readable page.
 
 Live at: https://malaysia.uwuapps.org
 

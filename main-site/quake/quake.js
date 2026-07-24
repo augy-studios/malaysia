@@ -108,7 +108,7 @@
 
   function renderLoading() {
     heroTitle.textContent = "Checking current earthquake activity…";
-    heroSub.textContent = "Live warnings from MET Malaysia via data.gov.my.";
+    heroSub.textContent = "Live earthquake warnings, updated automatically.";
     updatedEl.textContent = "";
     stateEl.innerHTML =
       '<div class="state-banner info"><span class="spinner"></span><span>Loading earthquake warnings…</span></div>';
@@ -290,7 +290,7 @@
     }
 
     heroTitle.textContent = active.length + " active warning" + (active.length === 1 ? "" : "s");
-    heroSub.textContent = "Seismic activity reported in the last 72 hours via MET Malaysia.";
+    heroSub.textContent = "Seismic activity reported in the last 72 hours.";
     stateEl.innerHTML = "";
     listEl.innerHTML = active.slice(0, MAX_LIST_ITEMS).map(cardHtml).join("");
   }

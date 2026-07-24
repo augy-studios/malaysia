@@ -1,6 +1,6 @@
 # Malaysia Boleh
 
-A free installable PWA by **UwU Apps** that puts live Malaysian public data in one place, built entirely on keyless government feeds from [data.gov.my](https://data.gov.my).
+A free installable PWA by **UwU Apps** that puts live Malaysian public data in one place, built entirely on government feeds from [data.gov.my](https://data.gov.my).
 
 Live at: **<https://malaysia.uwuapps.org>**
 

@@ -278,6 +278,13 @@
     align-items: stretch;
   }
 
+  .fa-search-wrap {
+    /* flex-basis applies to height once the toolbar becomes a column, so
+       reset it here or the 260px row-layout basis inflates this box's
+       height instead of controlling its width. */
+    flex: 0 0 auto;
+  }
+
   .fa-toolbar-meta {
     justify-content: space-between;
   }

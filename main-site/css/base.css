@@ -487,6 +487,12 @@ table {
   text-decoration: underline;
 }
 
+.footer-sources {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
 .footer-heart {
   /* Intentionally a fixed green, independent of the active accent theme. */
   display: inline-block;

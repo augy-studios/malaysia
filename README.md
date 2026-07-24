@@ -1,6 +1,6 @@
 # Malaysia Boleh
 
-An open-source, installable PWA by [Augy Studios](https://uwuapps.org) that puts live Malaysian public data in one place - weather, earthquakes, floods, and public transit - built entirely on free, keyless feeds from [data.gov.my](https://data.gov.my).
+An open-source, installable PWA by [Augy Studios](https://uwuapps.org) that puts live Malaysian public data in one place - weather, earthquakes, floods, and public transit - built entirely on free feeds from [data.gov.my](https://data.gov.my).
 
 Live at: **<https://malaysia.uwuapps.org>**
 
