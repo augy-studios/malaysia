@@ -9,6 +9,7 @@
     forecast: 'mb-weather-forecast-cache',
     warning: 'mb-weather-warning-cache'
   };
+  const PAGE_SIZE = 15;
 
   const els = {};
 
@@ -18,16 +19,27 @@
     els.umbrellaHeadline = document.getElementById('umbrellaHeadline');
     els.umbrellaSub = document.getElementById('umbrellaSub');
     els.locationSelect = document.getElementById('locationSelect');
+    els.districtSearch = document.getElementById('districtSearchInput');
     els.lastUpdated = document.getElementById('lastUpdated');
     els.refreshBtn = document.getElementById('refreshBtn');
     els.refreshIcon = document.getElementById('refreshIcon');
     els.forecastState = document.getElementById('forecastState');
     els.forecastGrid = document.getElementById('forecastGrid');
+    els.forecastPagination = document.getElementById('forecastPagination');
+    els.forecastPagePrev = document.getElementById('forecastPagePrev');
+    els.forecastPageNext = document.getElementById('forecastPageNext');
+    els.forecastPagePrevIcon = document.getElementById('forecastPagePrevIcon');
+    els.forecastPageNextIcon = document.getElementById('forecastPageNextIcon');
+    els.forecastPageIndicator = document.getElementById('forecastPageIndicator');
     els.warningState = document.getElementById('warningState');
     els.warningList = document.getElementById('warningList');
 
     if (els.refreshIcon && window.Icons) {
       els.refreshIcon.innerHTML = window.Icons.html('refresh', { size: 16 });
+    }
+    if (window.Icons) {
+      els.forecastPagePrevIcon.innerHTML = window.Icons.html('chevronLeft', { size: 16 });
+      els.forecastPageNextIcon.innerHTML = window.Icons.html('chevronRight', { size: 16 });
     }
 
     els.refreshBtn.addEventListener('click', function () {
@@ -35,8 +47,32 @@
     });
 
     els.locationSelect.addEventListener('change', function () {
-      renderForecast(state.forecastByLocation, els.locationSelect.value);
+      if (els.districtSearch) els.districtSearch.value = '';
+      state.query = '';
+      state.page = 1;
+      renderForecast(state.forecastByLocation, els.locationSelect.value, state.query);
       renderUmbrella(state.forecastByLocation, els.locationSelect.value);
+    });
+
+    els.districtSearch.addEventListener('input', function () {
+      state.query = els.districtSearch.value.trim().toLowerCase();
+      state.page = 1;
+      if (state.query && els.locationSelect.value) els.locationSelect.value = '';
+      renderForecast(state.forecastByLocation, els.locationSelect.value, state.query);
+    });
+
+    els.forecastPagePrev.addEventListener('click', function () {
+      if (state.page > 1) {
+        state.page -= 1;
+        renderForecast(state.forecastByLocation, els.locationSelect.value, state.query);
+        els.forecastGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    els.forecastPageNext.addEventListener('click', function () {
+      state.page += 1;
+      renderForecast(state.forecastByLocation, els.locationSelect.value, state.query);
+      els.forecastGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     loadAll(false);
@@ -44,7 +80,9 @@
 
   const state = {
     forecastByLocation: null,
-    warnings: null
+    warnings: null,
+    query: '',
+    page: 1
   };
 
   function icon(name, opts) {
@@ -233,8 +271,9 @@
       els.lastUpdated.textContent = 'Updated ' + fmtDateTime(body.fetchedAt || new Date().toISOString());
     }
 
+    state.page = 1;
     renderUmbrella(byLocation, els.locationSelect.value);
-    renderForecast(byLocation, els.locationSelect.value);
+    renderForecast(byLocation, els.locationSelect.value, state.query);
   }
 
   function populateLocationSelect(byLocation) {
@@ -302,18 +341,49 @@
     }
   }
 
-  function renderForecast(byLocation, selectedId) {
+  function renderForecast(byLocation, selectedId, query) {
     if (!byLocation) return;
-    const ids = selectedId && byLocation[selectedId] ? [selectedId] : Object.keys(byLocation).sort(function (a, b) {
-      return byLocation[a].name.localeCompare(byLocation[b].name);
-    });
+    const q = (query || '').toLowerCase();
+
+    let ids;
+    if (selectedId && byLocation[selectedId]) {
+      ids = [selectedId];
+    } else {
+      ids = Object.keys(byLocation).sort(function (a, b) {
+        return byLocation[a].name.localeCompare(byLocation[b].name);
+      });
+      if (q) {
+        ids = ids.filter(function (id) {
+          return byLocation[id].name.toLowerCase().indexOf(q) !== -1;
+        });
+      }
+    }
+
+    const isPaged = !selectedId;
+    const totalPages = Math.max(1, Math.ceil(ids.length / PAGE_SIZE));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const pageIds = isPaged ? ids.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE) : ids;
+
+    if (els.forecastPagination) {
+      els.forecastPagination.hidden = !isPaged || ids.length <= PAGE_SIZE;
+      if (isPaged) {
+        els.forecastPagePrev.disabled = state.page <= 1;
+        els.forecastPageNext.disabled = state.page >= totalPages;
+        els.forecastPageIndicator.textContent = 'Page ' + state.page + ' of ' + totalPages;
+      }
+    }
 
     if (ids.length === 0) {
-      els.forecastGrid.innerHTML = '';
+      els.forecastGrid.innerHTML = q
+        ? '<div class="state-banner info">' + icon('cloud', { size: 18 }) +
+          '<span>No districts match "' + escapeHtml(query) + '".</span></div>'
+        : '';
       return;
     }
 
-    els.forecastGrid.innerHTML = ids.map(function (id) {
+    els.forecastGrid.innerHTML = pageIds.map(function (id) {
       const loc = byLocation[id];
       const days = loc.days.slice(0, 7);
       const dayRows = days.map(function (d) {

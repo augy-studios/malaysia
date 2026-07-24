@@ -68,7 +68,8 @@
   color: var(--muted);
 }
 
-.location-picker select {
+.location-picker select,
+.district-search-input {
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--ink);
@@ -77,6 +78,28 @@
   border-radius: 10px;
   padding: 8px 12px;
   min-width: 200px;
+}
+
+.district-search-input:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: 1px;
+}
+
+/* -- Pagination -- */
+
+.weather-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+.weather-page-indicator {
+  color: var(--muted);
+  font-size: 0.9rem;
+  min-width: 90px;
+  text-align: center;
 }
 
 .toolbar-right {
@@ -241,7 +264,8 @@
     justify-content: space-between;
   }
 
-  .location-picker select {
+  .location-picker select,
+  .district-search-input {
     min-width: 0;
     width: 100%;
   }

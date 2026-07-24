@@ -192,6 +192,16 @@ table {
   transform: translateY(-1px);
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  box-shadow: none;
+  transform: none;
+}
+
 .btn-primary {
   background: var(--brand-strong);
   border-color: var(--brand-strong);

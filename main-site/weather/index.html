@@ -78,6 +78,11 @@
 
         <div class="weather-toolbar">
             <label class="location-picker">
+                <span>Search district</span>
+                <input type="search" id="districtSearchInput" class="district-search-input"
+                    placeholder="e.g. Klang, George Town, Kota Kinabalu&hellip;" autocomplete="off">
+            </label>
+            <label class="location-picker">
                 <span>District</span>
                 <select id="locationSelect" aria-label="Select district">
                     <option value="">All districts</option>
@@ -94,6 +99,16 @@
 
         <div id="forecastState"></div>
         <section class="forecast-grid" id="forecastGrid"></section>
+
+        <nav id="forecastPagination" class="weather-pagination" hidden aria-label="Forecast pages">
+            <button id="forecastPagePrev" class="btn" type="button">
+                <span id="forecastPagePrevIcon"></span><span class="btn-label">Previous</span>
+            </button>
+            <span id="forecastPageIndicator" class="weather-page-indicator"></span>
+            <button id="forecastPageNext" class="btn" type="button">
+                <span class="btn-label">Next</span><span id="forecastPageNextIcon"></span>
+            </button>
+        </nav>
 
         <h2 class="section-title">Active warnings</h2>
         <div id="warningState"></div>

@@ -11,6 +11,7 @@
   const CACHE_TTL_MS = 4 * 60 * 1000; // 4 minutes
 
   const ELEVATED = ["ALERT", "WARNING", "DANGER"];
+  const PAGE_SIZE = 15;
 
   const els = {};
 
@@ -18,6 +19,7 @@
   let activeFilter = "alert"; // "alert" | "all"
   let searchTerm = "";
   let searchDebounce = null;
+  let currentPage = 1;
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -46,6 +48,12 @@
     els.resultCount = document.getElementById("resultCount");
     els.stationList = document.getElementById("stationList");
     els.noResults = document.getElementById("noResults");
+    els.paginationRow = document.getElementById("paginationRow");
+    els.pagePrev = document.getElementById("pagePrev");
+    els.pageNext = document.getElementById("pageNext");
+    els.pagePrevIcon = document.getElementById("pagePrevIcon");
+    els.pageNextIcon = document.getElementById("pageNextIcon");
+    els.pageIndicator = document.getElementById("pageIndicator");
   }
 
   function wireEvents() {
@@ -54,6 +62,8 @@
       els.retryIcon.innerHTML = Icons.html("refresh", { size: 16 });
       els.emptyIcon.innerHTML = Icons.html("droplet", { size: 20 });
       els.refreshIcon.innerHTML = Icons.html("refresh", { size: 16 });
+      els.pagePrevIcon.innerHTML = Icons.html("chevronLeft", { size: 16 });
+      els.pageNextIcon.innerHTML = Icons.html("chevronRight", { size: 16 });
     }
 
     els.retryButton.addEventListener("click", function () {
@@ -69,6 +79,7 @@
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(function () {
         searchTerm = (value || "").trim().toLowerCase();
+        currentPage = 1;
         renderList();
       }, 120);
     });
@@ -78,7 +89,22 @@
       if (!btn) return;
       activeFilter = btn.getAttribute("data-filter") || "alert";
       updateFilterChips();
+      currentPage = 1;
       renderList();
+    });
+
+    els.pagePrev.addEventListener("click", function () {
+      if (currentPage > 1) {
+        currentPage -= 1;
+        renderList();
+        els.stationList.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+
+    els.pageNext.addEventListener("click", function () {
+      currentPage += 1;
+      renderList();
+      els.stationList.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
     updateFilterChips();
@@ -191,6 +217,7 @@
       els.updatedText.textContent = "Last updated " + formatRelativeOrTime(updatedAt);
     }
 
+    currentPage = 1;
     renderHero();
     renderList();
     showState("content");
@@ -277,33 +304,43 @@
       filtered = filtered.filter(function (s) {
         return matchesSearch(s, searchTerm);
       });
-    } else if (activeFilter === "alert" && filtered.length === 0) {
-      // nothing elevated right now - fall through handled below via message
     }
 
-    // cap render count defensively even if filter is "all" with a search term
-    // that still matches a huge number of rows
-    const MAX_RENDER = 300;
-    const truncated = filtered.length > MAX_RENDER;
-    const toRender = filtered.slice(0, MAX_RENDER);
+    const totalResults = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
-    if (activeFilter === "alert" && !searchTerm) {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const toRender = filtered.slice(start, start + PAGE_SIZE);
+
+    if (totalResults === 0) {
       els.resultCount.textContent =
-        filtered.length === 0
+        activeFilter === "alert" && !searchTerm
           ? "No stations currently at alert level or above."
-          : "Showing " + filtered.length + " station(s) at alert level or above.";
+          : "No stations found" + (searchTerm ? ' for "' + searchTerm + '"' : "") + ".";
     } else {
+      const rangeStart = start + 1;
+      const rangeEnd = Math.min(start + PAGE_SIZE, totalResults);
       els.resultCount.textContent =
-        toRender.length +
-        (truncated ? "+ " : " ") +
-        "of " +
-        allStations.length +
-        " stations shown" +
-        (searchTerm ? ' for "' + searchTerm + '"' : "");
+        "Showing " +
+        rangeStart +
+        "-" +
+        rangeEnd +
+        " of " +
+        totalResults +
+        (activeFilter === "alert" && !searchTerm
+          ? " station(s) at alert level or above."
+          : " station(s)" + (searchTerm ? ' for "' + searchTerm + '"' : "") + ".");
     }
 
     els.noResults.hidden = toRender.length !== 0;
     els.stationList.innerHTML = toRender.map(renderCard).join("");
+
+    els.paginationRow.hidden = totalResults <= PAGE_SIZE;
+    els.pagePrev.disabled = currentPage <= 1;
+    els.pageNext.disabled = currentPage >= totalPages;
+    els.pageIndicator.textContent = "Page " + currentPage + " of " + totalPages;
   }
 
   function renderCard(station) {
