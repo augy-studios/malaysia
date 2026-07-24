@@ -10,8 +10,8 @@
   var LIVE_AUTO_STALE_MS = 5000; // don't reuse live data beyond a few seconds
 
   var state = {
-    rapidkl: { loaded: false, routes: [], stops: [] },
-    ktmb: { loaded: false, routes: [], stops: [] },
+    rapidkl: { loaded: false, routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: '' },
+    ktmb: { loaded: false, routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: '' },
     live: { loaded: false, vehicles: [], fetchedAt: null }
   };
 
@@ -124,24 +124,30 @@
   var SCHEDULE_CONFIG = {
     rapidkl: {
       endpoint: '/api/trains-prasarana',
-      cacheKey: 'mb-trains-rapidkl-v1',
+      cacheKey: 'mb-trains-rapidkl-v2',
       stateEl: 'rapidklState',
       contentEl: 'rapidklContent',
       routeListEl: 'rapidklRouteList',
       stopListEl: 'rapidklStopList',
       routeSearchEl: 'rapidklRouteSearch',
       stopSearchEl: 'rapidklStopSearch',
+      filterNoteEl: 'rapidklRouteFilterNote',
+      filterNameEl: 'rapidklRouteFilterName',
+      filterClearEl: 'rapidklRouteFilterClear',
       loadingLabel: 'Loading Rapid KL routes and stations...'
     },
     ktmb: {
       endpoint: '/api/trains-ktmb',
-      cacheKey: 'mb-trains-ktmb-v1',
+      cacheKey: 'mb-trains-ktmb-v2',
       stateEl: 'ktmbState',
       contentEl: 'ktmbContent',
       routeListEl: 'ktmbRouteList',
       stopListEl: 'ktmbStopList',
       routeSearchEl: 'ktmbRouteSearch',
       stopSearchEl: 'ktmbStopSearch',
+      filterNoteEl: 'ktmbRouteFilterNote',
+      filterNameEl: 'ktmbRouteFilterName',
+      filterClearEl: 'ktmbRouteFilterClear',
       loadingLabel: 'Loading KTMB routes and stations...'
     }
   };
@@ -187,6 +193,9 @@
     state[kind].loaded = true;
     state[kind].routes = routes;
     state[kind].stops = stops;
+    state[kind].routeStops = (payload.routeStops && typeof payload.routeStops === 'object') ? payload.routeStops : {};
+    state[kind].selectedRouteId = null;
+    state[kind].stopQuery = '';
 
     if (!routes.length && !stops.length) {
       renderInfo(cfg.stateEl, 'The upstream feed returned no route or station data right now.');
@@ -196,11 +205,78 @@
     clearState(cfg.stateEl);
     document.getElementById(cfg.contentEl).hidden = false;
 
-    renderRouteList(cfg.routeListEl, routes, kind);
-    renderStopList(cfg.stopListEl, stops, kind);
+    renderRouteList(kind);
+    refreshStopList(kind);
+    updateFilterNote(kind);
 
-    wireSearch(cfg.routeSearchEl, function (q) { renderRouteList(cfg.routeListEl, filterRoutes(routes, q), kind); });
-    wireSearch(cfg.stopSearchEl, function (q) { renderStopList(cfg.stopListEl, filterStops(stops, q), kind); });
+    wireSearch(cfg.routeSearchEl, function (q) { renderRouteList(kind, q); });
+    wireSearch(cfg.stopSearchEl, function (q) {
+      state[kind].stopQuery = q;
+      refreshStopList(kind);
+    });
+
+    var routeListEl = document.getElementById(cfg.routeListEl);
+    if (!routeListEl.dataset.clickWired) {
+      routeListEl.dataset.clickWired = '1';
+      routeListEl.addEventListener('click', function (e) {
+        var item = e.target.closest('.directory-item[data-route-id]');
+        if (item) selectRoute(kind, item.getAttribute('data-route-id'));
+      });
+      routeListEl.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var item = e.target.closest('.directory-item[data-route-id]');
+        if (item) {
+          e.preventDefault();
+          selectRoute(kind, item.getAttribute('data-route-id'));
+        }
+      });
+    }
+
+    var clearBtn = document.getElementById(cfg.filterClearEl);
+    if (clearBtn && !clearBtn.dataset.wired) {
+      clearBtn.dataset.wired = '1';
+      clearBtn.addEventListener('click', function () { selectRoute(kind, null); });
+    }
+  }
+
+  function selectRoute(kind, routeId) {
+    var s = state[kind];
+    s.selectedRouteId = (s.selectedRouteId === routeId) ? null : routeId;
+    renderRouteList(kind, currentSearchValue(SCHEDULE_CONFIG[kind].routeSearchEl));
+    refreshStopList(kind);
+    updateFilterNote(kind);
+  }
+
+  function currentSearchValue(inputId) {
+    var input = document.getElementById(inputId);
+    return input ? input.value.trim().toLowerCase() : '';
+  }
+
+  function updateFilterNote(kind) {
+    var cfg = SCHEDULE_CONFIG[kind];
+    var noteEl = document.getElementById(cfg.filterNoteEl);
+    if (!noteEl) return;
+    var s = state[kind];
+    if (!s.selectedRouteId) {
+      noteEl.hidden = true;
+      return;
+    }
+    var route = s.routes.find(function (r) { return r.route_id === s.selectedRouteId; });
+    var name = route ? (route.route_long_name || route.route_short_name || route.route_id) : s.selectedRouteId;
+    document.getElementById(cfg.filterNameEl).textContent = name;
+    noteEl.hidden = false;
+  }
+
+  function refreshStopList(kind) {
+    var cfg = SCHEDULE_CONFIG[kind];
+    var s = state[kind];
+    var pool = s.stops;
+    if (s.selectedRouteId) {
+      var allowed = s.routeStops[s.selectedRouteId];
+      var allowedSet = allowed ? new Set(allowed) : new Set();
+      pool = pool.filter(function (st) { return allowedSet.has(st.stop_id); });
+    }
+    renderStopList(cfg.stopListEl, filterStops(pool, s.stopQuery));
   }
 
   function wireSearch(inputId, onFilter) {
@@ -231,8 +307,11 @@
     });
   }
 
-  function renderRouteList(listId, routes, kind) {
-    var el = document.getElementById(listId);
+  function renderRouteList(kind, query) {
+    var cfg = SCHEDULE_CONFIG[kind];
+    var s = state[kind];
+    var routes = filterRoutes(s.routes, query || '');
+    var el = document.getElementById(cfg.routeListEl);
     if (!routes.length) {
       el.innerHTML = '<li class="directory-empty">No matching routes.</li>';
       return;
@@ -241,7 +320,11 @@
       var name = r.route_long_name || r.route_short_name || r.route_id || 'Unnamed route';
       var badge = r.category || r.route_short_name || '';
       var sub = r.route_desc || (kind === 'ktmb' ? (r.route_url ? 'KTMB' : '') : '');
-      return '<li class="directory-item">' +
+      var hasStops = r.route_id && s.routeStops[r.route_id] && s.routeStops[r.route_id].length;
+      var isSelected = s.selectedRouteId === r.route_id;
+      var cls = 'directory-item' + (hasStops ? ' is-clickable' : '') + (isSelected ? ' is-selected' : '');
+      var attrs = hasStops ? ' data-route-id="' + escapeHtml(r.route_id) + '" role="button" tabindex="0"' : '';
+      return '<li class="' + cls + '"' + attrs + '>' +
         '<span class="item-title">' + escapeHtml(name) + (badge ? ' <span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</span>' +
         (sub ? '<span class="item-sub">' + escapeHtml(sub) + '</span>' : '') +
         '</li>';

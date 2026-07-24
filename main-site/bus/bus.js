@@ -85,26 +85,37 @@
   const STATIC_FEEDS = {
     prasarana: {
       endpoint: (category) => `/api/bus-prasarana?category=${encodeURIComponent(category)}`,
-      cacheKey: (category) => `bus-static-prasarana-${category}`,
+      cacheKey: (category) => `bus-static-prasarana-${category}-v2`,
       stateEl: "prasaranaState",
       contentEl: "prasaranaContent",
       routeListEl: "prasaranaRouteList",
       stopListEl: "prasaranaStopList",
       routeSearchEl: "prasaranaRouteSearch",
       stopSearchEl: "prasaranaStopSearch",
+      filterNoteEl: "prasaranaRouteFilterNote",
+      filterNameEl: "prasaranaRouteFilterName",
+      filterClearEl: "prasaranaRouteFilterClear",
       loadingLabel: "Loading Rapid Bus routes and stops...",
     },
     mybas: {
       endpoint: () => "/api/bus-mybas-johor",
-      cacheKey: () => "bus-static-mybas-johor",
+      cacheKey: () => "bus-static-mybas-johor-v2",
       stateEl: "mybasState",
       contentEl: "mybasContent",
       routeListEl: "mybasRouteList",
       stopListEl: "mybasStopList",
       routeSearchEl: "mybasRouteSearch",
       stopSearchEl: "mybasStopSearch",
+      filterNoteEl: "mybasRouteFilterNote",
+      filterNameEl: "mybasRouteFilterName",
+      filterClearEl: "mybasRouteFilterClear",
       loadingLabel: "Loading myBAS Johor routes and stops...",
     },
+  };
+
+  const feedState = {
+    prasarana: { routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: "" },
+    mybas: { routes: [], stops: [], routeStops: {}, selectedRouteId: null, stopQuery: "" },
   };
 
   function readStaticCache(key) {
@@ -160,8 +171,11 @@
     });
   }
 
-  function renderRouteList(listId, routes) {
-    const el = document.getElementById(listId);
+  function renderRouteList(kind, query) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const routes = filterRoutes(s.routes, query || "");
+    const el = document.getElementById(cfg.routeListEl);
     if (!routes.length) {
       el.innerHTML = '<li class="directory-empty">No matching routes.</li>';
       return;
@@ -170,11 +184,55 @@
       const name = r.route_long_name || r.route_short_name || r.route_id || "Unnamed route";
       const badge = CATEGORY_LABELS[r.category] || r.category || r.route_short_name || "";
       const sub = r.route_desc || "";
-      return `<li class="directory-item">` +
+      const hasStops = r.route_id && s.routeStops[r.route_id] && s.routeStops[r.route_id].length;
+      const isSelected = s.selectedRouteId === r.route_id;
+      const cls = "directory-item" + (hasStops ? " is-clickable" : "") + (isSelected ? " is-selected" : "");
+      const attrs = hasStops ? ` data-route-id="${escapeHtml(r.route_id)}" role="button" tabindex="0"` : "";
+      return `<li class="${cls}"${attrs}>` +
         `<span class="item-title">${escapeHtml(name)}${badge ? ` <span class="badge">${escapeHtml(badge)}</span>` : ""}</span>` +
         `${sub ? `<span class="item-sub">${escapeHtml(sub)}</span>` : ""}` +
         `</li>`;
     }).join("");
+  }
+
+  function selectRoute(kind, routeId) {
+    const s = feedState[kind];
+    s.selectedRouteId = (s.selectedRouteId === routeId) ? null : routeId;
+    renderRouteList(kind, currentSearchValue(STATIC_FEEDS[kind].routeSearchEl));
+    refreshStopList(kind);
+    updateFilterNote(kind);
+  }
+
+  function currentSearchValue(inputId) {
+    const input = document.getElementById(inputId);
+    return input ? input.value.trim().toLowerCase() : "";
+  }
+
+  function updateFilterNote(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const noteEl = document.getElementById(cfg.filterNoteEl);
+    if (!noteEl) return;
+    const s = feedState[kind];
+    if (!s.selectedRouteId) {
+      noteEl.hidden = true;
+      return;
+    }
+    const route = s.routes.find((r) => r.route_id === s.selectedRouteId);
+    const name = route ? (route.route_long_name || route.route_short_name || route.route_id) : s.selectedRouteId;
+    document.getElementById(cfg.filterNameEl).textContent = name;
+    noteEl.hidden = false;
+  }
+
+  function refreshStopList(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    let pool = s.stops;
+    if (s.selectedRouteId) {
+      const allowed = s.routeStops[s.selectedRouteId];
+      const allowedSet = allowed ? new Set(allowed) : new Set();
+      pool = pool.filter((st) => allowedSet.has(st.stop_id));
+    }
+    renderStopList(cfg.stopListEl, filterStops(pool, s.stopQuery));
   }
 
   function renderStopList(listId, stops) {
@@ -203,6 +261,12 @@
     const stateEl = document.getElementById(cfg.stateEl);
     const contentEl = document.getElementById(cfg.contentEl);
 
+    feedState[kind].routes = routes;
+    feedState[kind].stops = stops;
+    feedState[kind].routeStops = (payload.routeStops && typeof payload.routeStops === "object") ? payload.routeStops : {};
+    feedState[kind].selectedRouteId = null;
+    feedState[kind].stopQuery = "";
+
     if (!routes.length && !stops.length) {
       contentEl.hidden = true;
       renderInfo(stateEl, "The upstream feed returned no route or stop data right now.");
@@ -211,10 +275,38 @@
 
     stateEl.innerHTML = "";
     contentEl.hidden = false;
-    renderRouteList(cfg.routeListEl, routes);
-    renderStopList(cfg.stopListEl, stops);
-    wireSearch(cfg.routeSearchEl, (q) => renderRouteList(cfg.routeListEl, filterRoutes(routes, q)));
-    wireSearch(cfg.stopSearchEl, (q) => renderStopList(cfg.stopListEl, filterStops(stops, q)));
+    renderRouteList(kind);
+    refreshStopList(kind);
+    updateFilterNote(kind);
+
+    wireSearch(cfg.routeSearchEl, (q) => renderRouteList(kind, q));
+    wireSearch(cfg.stopSearchEl, (q) => {
+      feedState[kind].stopQuery = q;
+      refreshStopList(kind);
+    });
+
+    const routeListEl = document.getElementById(cfg.routeListEl);
+    if (!routeListEl.dataset.clickWired) {
+      routeListEl.dataset.clickWired = "1";
+      routeListEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".directory-item[data-route-id]");
+        if (item) selectRoute(kind, item.getAttribute("data-route-id"));
+      });
+      routeListEl.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const item = e.target.closest(".directory-item[data-route-id]");
+        if (item) {
+          e.preventDefault();
+          selectRoute(kind, item.getAttribute("data-route-id"));
+        }
+      });
+    }
+
+    const clearBtn = document.getElementById(cfg.filterClearEl);
+    if (clearBtn && !clearBtn.dataset.wired) {
+      clearBtn.dataset.wired = "1";
+      clearBtn.addEventListener("click", () => selectRoute(kind, null));
+    }
   }
 
   async function loadStaticFeed(kind, category, forceFresh) {

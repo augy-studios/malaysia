@@ -197,6 +197,49 @@
   border-bottom: none;
 }
 
+.directory-item.is-clickable {
+  cursor: pointer;
+}
+
+.directory-item.is-clickable:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.directory-item.is-clickable:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: -2px;
+}
+
+.directory-item.is-selected {
+  background: var(--brand);
+  border-left: 3px solid var(--brand-strong);
+  padding-left: 11px;
+}
+
+.route-filter-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.route-filter-note strong {
+  color: var(--ink);
+}
+
+.route-filter-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand-strong);
+  text-decoration: underline;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
 .directory-item .item-title {
   font-size: 0.95rem;
   color: var(--ink);

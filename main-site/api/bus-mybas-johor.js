@@ -136,7 +136,7 @@ module.exports = async (req, res) => {
 
     let entries;
     try {
-      entries = unzipEntries(buffer, ['routes.txt', 'stops.txt']);
+      entries = unzipEntries(buffer, ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt']);
     } catch (zipErr) {
       res.status(502).json({ success: false, error: 'Could not read upstream GTFS bundle: ' + zipErr.message });
       return;
@@ -146,6 +146,21 @@ module.exports = async (req, res) => {
       .map(r => Object.assign({ category: 'mybas-johor' }, r));
     const stops = (entries['stops.txt'] ? parseCSV(entries['stops.txt']) : [])
       .map(s => Object.assign({ category: 'mybas-johor' }, s));
+    const trips = entries['trips.txt'] ? parseCSV(entries['trips.txt']) : [];
+    const stopTimes = entries['stop_times.txt'] ? parseCSV(entries['stop_times.txt']) : [];
+
+    const tripRoute = {};
+    trips.forEach(t => { if (t.trip_id) tripRoute[t.trip_id] = t.route_id; });
+
+    const routeStopSets = {};
+    stopTimes.forEach(st => {
+      const routeId = tripRoute[st.trip_id];
+      if (!routeId || !st.stop_id) return;
+      if (!routeStopSets[routeId]) routeStopSets[routeId] = new Set();
+      routeStopSets[routeId].add(st.stop_id);
+    });
+    const routeStops = {};
+    Object.keys(routeStopSets).forEach(id => { routeStops[id] = Array.from(routeStopSets[id]); });
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800');
     res.status(200).json({
@@ -154,7 +169,8 @@ module.exports = async (req, res) => {
       fetchedAt: new Date().toISOString(),
       counts: { routes: routes.length, stops: stops.length },
       routes,
-      stops
+      stops,
+      routeStops
     });
   } catch (err) {
     const isAbort = err && (err.name === 'AbortError' || err.code === 'ABORT_ERR');

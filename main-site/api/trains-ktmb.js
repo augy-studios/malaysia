@@ -2,9 +2,11 @@
   Proxies the KTMB GTFS-static feed from data.gov.my (intercity + Komuter).
   Same shape as trains-prasarana.js: the upstream endpoint 302-redirects to a
   real GTFS zip (agency.txt, calendar.txt, routes.txt, stops.txt, trips.txt,
-  stop_times.txt). routes.txt and stops.txt are small plain CSV, so we unzip
-  and parse just those two with Node's built-in zlib (no npm dependencies in
-  this project) and return clean JSON.
+  stop_times.txt), all plain CSV and well under 200KB total for this feed, so
+  we unzip and parse all four with Node's built-in zlib (no npm dependencies
+  in this project) and derive a route_id -> [stop_id] map from trips.txt +
+  stop_times.txt so the client can show "which stations does this line serve"
+  without a second round trip.
 */
 const zlib = require('zlib');
 
@@ -134,7 +136,7 @@ module.exports = async (req, res) => {
 
     let entries;
     try {
-      entries = unzipEntries(buffer, ['routes.txt', 'stops.txt']);
+      entries = unzipEntries(buffer, ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt']);
     } catch (zipErr) {
       res.status(502).json({ success: false, error: 'Could not read upstream GTFS bundle: ' + zipErr.message });
       return;
@@ -142,6 +144,21 @@ module.exports = async (req, res) => {
 
     const routes = entries['routes.txt'] ? parseCSV(entries['routes.txt']) : [];
     const stops = entries['stops.txt'] ? parseCSV(entries['stops.txt']) : [];
+    const trips = entries['trips.txt'] ? parseCSV(entries['trips.txt']) : [];
+    const stopTimes = entries['stop_times.txt'] ? parseCSV(entries['stop_times.txt']) : [];
+
+    const tripRoute = {};
+    trips.forEach(t => { if (t.trip_id) tripRoute[t.trip_id] = t.route_id; });
+
+    const routeStopSets = {};
+    stopTimes.forEach(st => {
+      const routeId = tripRoute[st.trip_id];
+      if (!routeId || !st.stop_id) return;
+      if (!routeStopSets[routeId]) routeStopSets[routeId] = new Set();
+      routeStopSets[routeId].add(st.stop_id);
+    });
+    const routeStops = {};
+    Object.keys(routeStopSets).forEach(id => { routeStops[id] = Array.from(routeStopSets[id]); });
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800');
     res.status(200).json({
@@ -150,7 +167,8 @@ module.exports = async (req, res) => {
       fetchedAt: new Date().toISOString(),
       counts: { routes: routes.length, stops: stops.length },
       routes,
-      stops
+      stops,
+      routeStops
     });
   } catch (err) {
     const isAbort = err && err.name === 'AbortError';

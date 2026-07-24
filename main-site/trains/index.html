@@ -102,6 +102,11 @@
                     </div>
                     <div class="directory-col">
                         <label class="search-label" for="rapidklStopSearch">Search stations</label>
+                        <p class="route-filter-note" id="rapidklRouteFilterNote" hidden>
+                            Showing stations for <strong id="rapidklRouteFilterName"></strong>
+                            <button type="button" class="route-filter-clear" id="rapidklRouteFilterClear">Show all
+                                stations</button>
+                        </p>
                         <input class="search-input" id="rapidklStopSearch" type="search"
                             placeholder="e.g. Ampang, KLCC, Cempaka...">
                         <ul class="directory-list" id="rapidklStopList"></ul>
@@ -131,6 +136,11 @@
                     </div>
                     <div class="directory-col">
                         <label class="search-label" for="ktmbStopSearch">Search stations</label>
+                        <p class="route-filter-note" id="ktmbRouteFilterNote" hidden>
+                            Showing stations for <strong id="ktmbRouteFilterName"></strong>
+                            <button type="button" class="route-filter-clear" id="ktmbRouteFilterClear">Show all
+                                stations</button>
+                        </p>
                         <input class="search-input" id="ktmbStopSearch" type="search"
                             placeholder="e.g. Batu Caves, Ipoh, Padang Besar...">
                         <ul class="directory-list" id="ktmbStopList"></ul>
