@@ -93,9 +93,28 @@
 
             <div class="glass bus-section">
                 <div class="bus-section-head">
-                    <h2><span class="bus-icon" data-icon="mapPin"></span> Schedule feed (GTFS static)</h2>
+                    <h2><span class="bus-icon" data-icon="mapPin"></span> Routes &amp; stops</h2>
+                    <button class="btn bus-refresh-btn" type="button" id="prasaranaStaticRefresh">
+                        <span data-icon="refresh"></span> Refresh
+                    </button>
                 </div>
-                <div id="prasaranaStaticBody"></div>
+                <p class="section-sub">Routes and stops parsed from the Prasarana GTFS feed. Cached for an hour on
+                    this device.</p>
+                <div id="prasaranaState"></div>
+                <div class="directory-grid" id="prasaranaContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="prasaranaRouteSearch">Search routes</label>
+                        <input class="search-input" id="prasaranaRouteSearch" type="search"
+                            placeholder="e.g. Rapid, U6801, Sunway...">
+                        <ul class="directory-list" id="prasaranaRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label" for="prasaranaStopSearch">Search stops</label>
+                        <input class="search-input" id="prasaranaStopSearch" type="search"
+                            placeholder="e.g. KLCC, Pasar Seni, Terminal...">
+                        <ul class="directory-list" id="prasaranaStopList"></ul>
+                    </div>
+                </div>
             </div>
 
             <div class="glass bus-section">
@@ -116,9 +135,28 @@
         <section id="panelMybas" class="bus-panel" hidden>
             <div class="glass bus-section">
                 <div class="bus-section-head">
-                    <h2><span class="bus-icon" data-icon="mapPin"></span> Schedule feed (GTFS static)</h2>
+                    <h2><span class="bus-icon" data-icon="mapPin"></span> Routes &amp; stops</h2>
+                    <button class="btn bus-refresh-btn" type="button" id="mybasStaticRefresh">
+                        <span data-icon="refresh"></span> Refresh
+                    </button>
                 </div>
-                <div id="mybasStaticBody"></div>
+                <p class="section-sub">Routes and stops parsed from the myBAS Johor Bahru GTFS feed. Cached for an
+                    hour on this device.</p>
+                <div id="mybasState"></div>
+                <div class="directory-grid" id="mybasContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="mybasRouteSearch">Search routes</label>
+                        <input class="search-input" id="mybasRouteSearch" type="search"
+                            placeholder="e.g. Larkin, JB Sentral...">
+                        <ul class="directory-list" id="mybasRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label" for="mybasStopSearch">Search stops</label>
+                        <input class="search-input" id="mybasStopSearch" type="search"
+                            placeholder="e.g. Larkin Sentral, City Square...">
+                        <ul class="directory-list" id="mybasStopList"></ul>
+                    </div>
+                </div>
             </div>
 
             <div class="glass bus-section">

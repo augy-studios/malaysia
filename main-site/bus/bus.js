@@ -7,6 +7,7 @@
     "rapid-bus-kl": "Rapid Bus KL",
     "rapid-bus-penang": "Rapid Bus Penang",
     "rapid-bus-mrtfeeder": "Rapid Bus MRT Feeder",
+    "mybas-johor": "myBAS Johor",
   };
 
   function iconEl(name, size) {
@@ -26,18 +27,6 @@
     return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
-  }
-
-  function formatBytes(bytes) {
-    if (bytes == null || Number.isNaN(bytes)) return "Unknown size";
-    const units = ["B", "KB", "MB", "GB"];
-    let val = bytes;
-    let i = 0;
-    while (val >= 1024 && i < units.length - 1) {
-      val /= 1024;
-      i += 1;
-    }
-    return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
   function formatTimeAgo(date) {
@@ -90,89 +79,170 @@
   }
 
   // ---------------------------------------------------------------------
-  // Static schedule (GTFS manifest) sections
+  // Static schedule (GTFS routes/stops directory) sections
   // ---------------------------------------------------------------------
 
-  function staticCacheKey(kind) {
-    return `bus-static-${kind}`;
-  }
+  const STATIC_FEEDS = {
+    prasarana: {
+      endpoint: (category) => `/api/bus-prasarana?category=${encodeURIComponent(category)}`,
+      cacheKey: (category) => `bus-static-prasarana-${category}`,
+      stateEl: "prasaranaState",
+      contentEl: "prasaranaContent",
+      routeListEl: "prasaranaRouteList",
+      stopListEl: "prasaranaStopList",
+      routeSearchEl: "prasaranaRouteSearch",
+      stopSearchEl: "prasaranaStopSearch",
+      loadingLabel: "Loading Rapid Bus routes and stops...",
+    },
+    mybas: {
+      endpoint: () => "/api/bus-mybas-johor",
+      cacheKey: () => "bus-static-mybas-johor",
+      stateEl: "mybasState",
+      contentEl: "mybasContent",
+      routeListEl: "mybasRouteList",
+      stopListEl: "mybasStopList",
+      routeSearchEl: "mybasRouteSearch",
+      stopSearchEl: "mybasStopSearch",
+      loadingLabel: "Loading myBAS Johor routes and stops...",
+    },
+  };
 
-  function readStaticCache(kind) {
+  function readStaticCache(key) {
     try {
-      const raw = sessionStorage.getItem(staticCacheKey(kind));
+      const raw = sessionStorage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.savedAt || Date.now() - parsed.savedAt > STATIC_CACHE_MS) return null;
+      if (!parsed || typeof parsed.savedAt !== "number") return null;
+      if (Date.now() - parsed.savedAt > STATIC_CACHE_MS) return null;
       return parsed.data;
     } catch (e) {
       return null;
     }
   }
 
-  function writeStaticCache(kind, data) {
+  function writeStaticCache(key, data) {
     try {
-      sessionStorage.setItem(staticCacheKey(kind), JSON.stringify({ savedAt: Date.now(), data }));
+      sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
     } catch (e) {
       /* sessionStorage unavailable/full - degrade silently */
     }
   }
 
-  function renderStaticManifest(container, manifest, label) {
-    const rows = [
-      ["Feed", label],
-      ["Format", "GTFS static bundle (zip)"],
-      ["Size", formatBytes(manifest.sizeBytes)],
-      ["Last modified", manifest.lastModified ? new Date(manifest.lastModified).toLocaleString() : "Unknown"],
-    ];
-
-    const rowsHtml = rows.map(([k, v]) => `<div class="bus-manifest-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join("");
-
-    container.innerHTML = infoBanner(
-      "This is a full GTFS bundle (stops, routes, trips and shapes as CSV inside a zip) - too large to parse and search in the browser, so here's the manifest with a direct download link instead of faked data."
-    ) + `<dl class="bus-manifest">${rowsHtml}</dl>` +
-      `<a class="btn bus-download-link" href="${escapeHtml(manifest.downloadUrl)}" target="_blank" rel="noopener noreferrer">${iconEl("externalLink", 16)} Download GTFS feed</a>`;
-
+  function renderInfo(container, message) {
+    container.innerHTML = infoBanner(message);
     hydrateIcons(container);
   }
 
-  async function loadPrasaranaStatic(category) {
-    const container = document.getElementById("prasaranaStaticBody");
-    const cacheKind = `prasarana-${category}`;
-    const cached = readStaticCache(cacheKind);
-    if (cached) {
-      renderStaticManifest(container, cached, CATEGORY_LABELS[category] || category);
+  function wireSearch(inputId, onFilter) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.dataset.wired) {
+      input.value = "";
       return;
     }
-    container.innerHTML = loadingHtml("Loading GTFS feed info...");
-    try {
-      const payload = await fetchJson(`/api/bus-prasarana?category=${encodeURIComponent(category)}`);
-      writeStaticCache(cacheKind, payload.data);
-      renderStaticManifest(container, payload.data, CATEGORY_LABELS[category] || category);
-    } catch (err) {
-      container.innerHTML = errorBanner(err.message || "Could not load GTFS feed info.", "prasaranaStaticRetry");
-      hydrateIcons(container);
-      const btn = document.getElementById("prasaranaStaticRetry");
-      if (btn) btn.addEventListener("click", () => loadPrasaranaStatic(category));
-    }
+    input.dataset.wired = "1";
+    input.addEventListener("input", () => onFilter(input.value.trim().toLowerCase()));
   }
 
-  async function loadMybasStatic() {
-    const container = document.getElementById("mybasStaticBody");
-    const cached = readStaticCache("mybas-johor");
-    if (cached) {
-      renderStaticManifest(container, cached, "myBAS Johor Bahru");
+  function filterRoutes(routes, q) {
+    if (!q) return routes;
+    return routes.filter((r) => {
+      const hay = [r.route_short_name, r.route_long_name, r.route_id, r.category].join(" ").toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+  }
+
+  function filterStops(stops, q) {
+    if (!q) return stops;
+    return stops.filter((s) => {
+      const hay = [s.stop_name, s.stop_id, s.category].join(" ").toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+  }
+
+  function renderRouteList(listId, routes) {
+    const el = document.getElementById(listId);
+    if (!routes.length) {
+      el.innerHTML = '<li class="directory-empty">No matching routes.</li>';
       return;
     }
-    container.innerHTML = loadingHtml("Loading GTFS feed info...");
+    el.innerHTML = routes.slice(0, 300).map((r) => {
+      const name = r.route_long_name || r.route_short_name || r.route_id || "Unnamed route";
+      const badge = CATEGORY_LABELS[r.category] || r.category || r.route_short_name || "";
+      const sub = r.route_desc || "";
+      return `<li class="directory-item">` +
+        `<span class="item-title">${escapeHtml(name)}${badge ? ` <span class="badge">${escapeHtml(badge)}</span>` : ""}</span>` +
+        `${sub ? `<span class="item-sub">${escapeHtml(sub)}</span>` : ""}` +
+        `</li>`;
+    }).join("");
+  }
+
+  function renderStopList(listId, stops) {
+    const el = document.getElementById(listId);
+    if (!stops.length) {
+      el.innerHTML = '<li class="directory-empty">No matching stops.</li>';
+      return;
+    }
+    el.innerHTML = stops.slice(0, 300).map((s) => {
+      const name = s.stop_name || s.stop_id || "Unnamed stop";
+      const badge = CATEGORY_LABELS[s.category] || s.category || "";
+      const lat = s.stop_lat, lon = s.stop_lon;
+      const sub = (lat && lon) ? `${lat}, ${lon}` : "";
+      return `<li class="directory-item">` +
+        `<span class="item-title">${escapeHtml(name)}${badge ? ` <span class="badge">${escapeHtml(badge)}</span>` : ""}</span>` +
+        `${sub ? `<span class="item-sub">${escapeHtml(sub)}</span>` : ""}` +
+        `</li>`;
+    }).join("");
+  }
+
+  function applyStaticFeed(kind, payload) {
+    const cfg = STATIC_FEEDS[kind];
+    const routes = Array.isArray(payload.routes) ? payload.routes : [];
+    const stops = Array.isArray(payload.stops) ? payload.stops : [];
+
+    const stateEl = document.getElementById(cfg.stateEl);
+    const contentEl = document.getElementById(cfg.contentEl);
+
+    if (!routes.length && !stops.length) {
+      contentEl.hidden = true;
+      renderInfo(stateEl, "The upstream feed returned no route or stop data right now.");
+      return;
+    }
+
+    stateEl.innerHTML = "";
+    contentEl.hidden = false;
+    renderRouteList(cfg.routeListEl, routes);
+    renderStopList(cfg.stopListEl, stops);
+    wireSearch(cfg.routeSearchEl, (q) => renderRouteList(cfg.routeListEl, filterRoutes(routes, q)));
+    wireSearch(cfg.stopSearchEl, (q) => renderStopList(cfg.stopListEl, filterStops(stops, q)));
+  }
+
+  async function loadStaticFeed(kind, category, forceFresh) {
+    const cfg = STATIC_FEEDS[kind];
+    const cacheKey = cfg.cacheKey(category);
+    const stateEl = document.getElementById(cfg.stateEl);
+    const contentEl = document.getElementById(cfg.contentEl);
+
+    contentEl.hidden = true;
+    stateEl.innerHTML = loadingHtml(cfg.loadingLabel);
+
+    if (!forceFresh) {
+      const cached = readStaticCache(cacheKey);
+      if (cached) {
+        applyStaticFeed(kind, cached);
+        return;
+      }
+    }
+
     try {
-      const payload = await fetchJson("/api/bus-mybas-johor");
-      writeStaticCache("mybas-johor", payload.data);
-      renderStaticManifest(container, payload.data, "myBAS Johor Bahru");
+      const payload = await fetchJson(cfg.endpoint(category));
+      writeStaticCache(cacheKey, payload);
+      applyStaticFeed(kind, payload);
     } catch (err) {
-      container.innerHTML = errorBanner(err.message || "Could not load GTFS feed info.", "mybasStaticRetry");
-      hydrateIcons(container);
-      const btn = document.getElementById("mybasStaticRetry");
-      if (btn) btn.addEventListener("click", loadMybasStatic);
+      stateEl.innerHTML = errorBanner(err.message || "Could not load routes and stops.", `${kind}StaticRetry`);
+      hydrateIcons(stateEl);
+      const btn = document.getElementById(`${kind}StaticRetry`);
+      if (btn) btn.addEventListener("click", () => loadStaticFeed(kind, category, true));
     }
   }
 
@@ -286,26 +356,37 @@
     const tabMybas = document.getElementById("tabMybas");
     const categorySelect = document.getElementById("prasaranaCategory");
 
+    let mybasLoaded = false;
+
     tabPrasarana.addEventListener("click", () => selectTab("prasarana"));
     tabMybas.addEventListener("click", () => {
       selectTab("mybas");
-      loadMybasStatic();
-      loadMybasRealtime();
+      if (!mybasLoaded) {
+        mybasLoaded = true;
+        loadStaticFeed("mybas", null);
+        loadMybasRealtime();
+      }
     });
 
     categorySelect.addEventListener("change", () => {
       const category = PRASARANA_CATEGORIES.includes(categorySelect.value) ? categorySelect.value : "rapid-bus-kl";
-      loadPrasaranaStatic(category);
+      loadStaticFeed("prasarana", category);
       loadPrasaranaRealtime(category);
     });
 
+    document.getElementById("prasaranaStaticRefresh").addEventListener("click", () => {
+      loadStaticFeed("prasarana", categorySelect.value || "rapid-bus-kl", true);
+    });
+    document.getElementById("mybasStaticRefresh").addEventListener("click", () => {
+      loadStaticFeed("mybas", null, true);
+    });
     document.getElementById("prasaranaRtRefresh").addEventListener("click", () => {
       loadPrasaranaRealtime(categorySelect.value || "rapid-bus-kl");
     });
     document.getElementById("mybasRtRefresh").addEventListener("click", loadMybasRealtime);
 
     // Initial load: Rapid Bus tab, default category.
-    loadPrasaranaStatic("rapid-bus-kl");
+    loadStaticFeed("prasarana", "rapid-bus-kl");
     loadPrasaranaRealtime("rapid-bus-kl");
   });
 })();

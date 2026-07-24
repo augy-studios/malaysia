@@ -1,83 +1,179 @@
-// Vercel serverless function - read-through proxy for Prasarana bus GTFS static
-// feeds via data.gov.my. The upstream endpoint does NOT return JSON - it 302s to
-// an S3-hosted GTFS zip bundle (stops/routes/trips/shapes CSVs), which is too
-// large and time/memory-costly to unzip + parse inside a serverless function on
-// every request. Instead we HEAD the upstream (following the redirect) to grab
-// the real download URL, size and last-modified date, and hand the client a
-// small JSON manifest so the page can offer a direct "download GTFS feed" link
-// instead of faking parsed route/stop data.
+/*
+  Proxies the Prasarana bus GTFS-static feed from data.gov.my (rapid-bus-kl,
+  rapid-bus-penang, rapid-bus-mrtfeeder). The upstream endpoint 302-redirects
+  to a real GTFS zip bundle. routes.txt and stops.txt are small, plain CSV, so
+  we unzip and parse just those two on every request (no npm dependencies are
+  configured in this project - ZIP central directory + DEFLATE are handled
+  with Node's built-in zlib) and hand the client clean JSON instead of a
+  binary blob or a bare download link. Vercel's edge cache (see Cache-Control
+  below) keeps this from re-downloading/re-unzipping on every visitor.
+*/
+const zlib = require('zlib');
 
-const CATEGORIES = ["rapid-bus-kl", "rapid-bus-penang", "rapid-bus-mrtfeeder"];
-const UPSTREAM_TIMEOUT_MS = 9000;
+const CATEGORIES = ['rapid-bus-kl', 'rapid-bus-penang', 'rapid-bus-mrtfeeder'];
+const TIMEOUT_MS = 15000;
+
+function unzipEntries(buffer, wantedNames) {
+  const EOCD_SIG = 0x06054b50;
+  const CD_SIG = 0x02014b50;
+  const LFH_SIG = 0x04034b50;
+
+  let eocdPos = -1;
+  const searchStart = Math.max(0, buffer.length - 22 - 65557);
+  for (let i = buffer.length - 22; i >= searchStart; i--) {
+    if (buffer.readUInt32LE(i) === EOCD_SIG) {
+      eocdPos = i;
+      break;
+    }
+  }
+  if (eocdPos === -1) throw new Error('EOCD record not found - not a valid zip');
+
+  const totalEntries = buffer.readUInt16LE(eocdPos + 10);
+  let pos = buffer.readUInt32LE(eocdPos + 16);
+  const result = {};
+  let found = 0;
+
+  for (let i = 0; i < totalEntries && found < wantedNames.length; i++) {
+    if (buffer.readUInt32LE(pos) !== CD_SIG) break;
+    const compMethod = buffer.readUInt16LE(pos + 10);
+    const compSize = buffer.readUInt32LE(pos + 20);
+    const nameLen = buffer.readUInt16LE(pos + 28);
+    const extraLen = buffer.readUInt16LE(pos + 30);
+    const commentLen = buffer.readUInt16LE(pos + 32);
+    const localHeaderOffset = buffer.readUInt32LE(pos + 42);
+    const name = buffer.toString('utf8', pos + 46, pos + 46 + nameLen);
+
+    if (wantedNames.includes(name)) {
+      if (buffer.readUInt32LE(localHeaderOffset) === LFH_SIG) {
+        const lhNameLen = buffer.readUInt16LE(localHeaderOffset + 26);
+        const lhExtraLen = buffer.readUInt16LE(localHeaderOffset + 28);
+        const dataStart = localHeaderOffset + 30 + lhNameLen + lhExtraLen;
+        const compData = buffer.slice(dataStart, dataStart + compSize);
+        let data;
+        if (compMethod === 0) data = compData;
+        else if (compMethod === 8) data = zlib.inflateRawSync(compData);
+        else throw new Error('Unsupported zip compression method ' + compMethod);
+        result[name] = data.toString('utf8');
+        found++;
+      }
+    }
+    pos += 46 + nameLen + extraLen + commentLen;
+  }
+  return result;
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\r') {
+      // skip, \n handles line end
+    } else if (c === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  while (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
+    rows.pop();
+  }
+  if (!rows.length) return [];
+  const header = rows.shift().map(h => h.trim());
+  return rows
+    .filter(r => r.length === header.length)
+    .map(r => {
+      const obj = {};
+      header.forEach((h, idx) => { obj[h] = r[idx]; });
+      return obj;
+    });
+}
 
 module.exports = async (req, res) => {
-  const category = String((req.query && req.query.category) || "rapid-bus-kl");
+  const category = String((req.query && req.query.category) || 'rapid-bus-kl');
 
   if (!CATEGORIES.includes(category)) {
     res.status(400).json({
       success: false,
-      error: `Invalid category. Expected one of: ${CATEGORIES.join(", ")}`,
+      error: `Invalid category. Expected one of: ${CATEGORIES.join(', ')}`
     });
     return;
   }
 
-  const upstreamUrl = `https://api.data.gov.my/gtfs-static/prasarana/?category=${encodeURIComponent(category)}`;
+  const upstreamUrl = `https://api.data.gov.my/gtfs-static/prasarana?category=${encodeURIComponent(category)}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const upstreamRes = await fetch(upstreamUrl, {
-      method: "HEAD",
-      redirect: "follow",
-      signal: controller.signal,
-    });
+    let upstream;
+    try {
+      upstream = await fetch(upstreamUrl, { signal: controller.signal, redirect: 'follow' });
+    } finally {
+      clearTimeout(timeout);
+    }
 
-    clearTimeout(timeout);
-
-    if (upstreamRes.status === 429) {
-      res.status(429).json({
-        success: false,
-        error: "Upstream rate limit reached (data.gov.my). Please try again shortly.",
-      });
+    if (upstream.status === 429) {
+      res.status(429).json({ success: false, error: 'Upstream (data.gov.my) rate-limited this request. Try again shortly.' });
+      return;
+    }
+    if (!upstream.ok) {
+      res.status(502).json({ success: false, error: 'Upstream returned status ' + upstream.status });
       return;
     }
 
-    if (!upstreamRes.ok) {
-      res.status(502).json({
-        success: false,
-        error: `Upstream returned HTTP ${upstreamRes.status}`,
-      });
+    const buffer = Buffer.from(await upstream.arrayBuffer());
+
+    let entries;
+    try {
+      entries = unzipEntries(buffer, ['routes.txt', 'stops.txt']);
+    } catch (zipErr) {
+      res.status(502).json({ success: false, error: 'Could not read upstream GTFS bundle: ' + zipErr.message });
       return;
     }
 
-    const downloadUrl = upstreamRes.url || upstreamUrl;
-    const contentLength = upstreamRes.headers.get("content-length");
-    const lastModified = upstreamRes.headers.get("last-modified");
+    const routes = (entries['routes.txt'] ? parseCSV(entries['routes.txt']) : [])
+      .map(r => Object.assign({ category }, r));
+    const stops = (entries['stops.txt'] ? parseCSV(entries['stops.txt']) : [])
+      .map(s => Object.assign({ category }, s));
 
-    res.setHeader(
-      "Cache-Control",
-      "public, s-maxage=86400, stale-while-revalidate=172800"
-    );
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800');
     res.status(200).json({
       success: true,
-      data: {
-        category,
-        format: "gtfs-zip",
-        downloadUrl,
-        sizeBytes: contentLength ? Number(contentLength) : null,
-        lastModified: lastModified || null,
-        categories: CATEGORIES,
-      },
+      source: upstreamUrl,
+      category,
+      categories: CATEGORIES,
       fetchedAt: new Date().toISOString(),
+      counts: { routes: routes.length, stops: stops.length },
+      routes,
+      stops
     });
   } catch (err) {
-    clearTimeout(timeout);
-    const isAbort = err && (err.name === "AbortError" || err.code === "ABORT_ERR");
+    const isAbort = err && (err.name === 'AbortError' || err.code === 'ABORT_ERR');
     res.status(isAbort ? 504 : 500).json({
       success: false,
-      error: isAbort
-        ? "Upstream request timed out."
-        : "Failed to reach upstream Prasarana GTFS feed.",
+      error: isAbort ? 'Request to upstream timed out.' : ((err && err.message) || 'Unknown error fetching Prasarana bus feed.')
     });
   }
 };

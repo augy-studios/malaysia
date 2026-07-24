@@ -107,6 +107,12 @@
   gap: 12px;
 }
 
+.section-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 8px 0 4px;
+}
+
 .bus-updated {
   color: var(--muted);
   font-size: 0.82rem;
@@ -137,41 +143,87 @@
   padding: 6px 0;
 }
 
-/* -- Static feed manifest card -- */
+/* -- Static feed directory (routes/stops search) -- */
 
-.bus-manifest {
+.directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.search-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+}
+
+.search-input:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: 1px;
+}
+
+.directory-list {
+  list-style: none;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.directory-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-.bus-manifest-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 0.9rem;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--border);
-}
-
-.bus-manifest-row:last-of-type {
+.directory-item:last-child {
   border-bottom: none;
 }
 
-.bus-manifest-row dt {
+.directory-item .item-title {
+  font-size: 0.95rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.directory-item .item-sub {
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
-.bus-manifest-row dd {
-  color: var(--ink);
-  text-align: right;
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-strong);
 }
 
-.bus-download-link {
-  margin-top: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.directory-empty {
+  padding: 18px 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 /* -- Vehicle list -- */

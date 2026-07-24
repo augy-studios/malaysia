@@ -9,6 +9,16 @@
   padding: 0;
 }
 
+/*
+  Any element carrying the `hidden` attribute must stay hidden even if a
+  class on it also sets `display` (e.g. .state-banner/.fa-loading use
+  `display: flex`, which ties [hidden]'s specificity and would otherwise
+  win the cascade by appearing later in this stylesheet).
+*/
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   height: 100%;
 }
