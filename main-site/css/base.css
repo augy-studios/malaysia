@@ -498,6 +498,7 @@ table {
 
 .footer-heart {
   /* Intentionally a fixed green, independent of the active accent theme. */
+  display: inline-block;
   color: #2f9e44;
   vertical-align: -2px;
   margin: 0 1px;
