@@ -42,7 +42,6 @@
         '<span class="page-card-icon">' + (window.Icons ? window.Icons.html(p.icon, { size: 22 }) : '') + '</span>' +
         '<h3>' + p.title + '</h3>' +
         '<p>' + p.desc + '</p>' +
-        '<span class="page-card-link">Open' + (window.Icons ? window.Icons.html('chevronRight', { size: 14 }) : '') + '</span>' +
         '</a>';
     }).join('');
   }

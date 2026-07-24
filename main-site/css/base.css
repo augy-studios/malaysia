@@ -296,15 +296,6 @@ table {
   font-size: 0.92rem;
 }
 
-.page-card-link {
-  margin-top: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--brand-strong);
-  font-size: 0.9rem;
-}
-
 /* -- Modal -- */
 
 .modal-overlay {

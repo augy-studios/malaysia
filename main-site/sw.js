@@ -1,4 +1,4 @@
-const CACHE = "malaysia-boleh-v15";
+const CACHE = "malaysia-boleh-v16";
 const API_CACHE = "malaysia-boleh-api-v5";
 
 const ASSETS = [
