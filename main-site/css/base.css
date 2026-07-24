@@ -247,6 +247,15 @@ table {
   margin: 0;
 }
 
+/* Homepage hero only - other pages keep the left-aligned .hero default. */
+.home-hero {
+  text-align: center;
+}
+
+.home-hero p {
+  margin: 0 auto;
+}
+
 /* -- Page grid (directory cards) -- */
 
 .page-grid {
