@@ -487,8 +487,20 @@
         '<div class="warning-item-body">' +
         '<div class="warning-item-title">' + escapeHtml(title) + '</div>' +
         '<div class="warning-item-meta">Valid ' + escapeHtml(fmtDateTime(w.valid_from)) + ' → ' + escapeHtml(fmtDateTime(w.valid_to)) + '</div>' +
-        '<div class="warning-item-text">' + escapeHtml(text) + '</div>' +
+        '<div class="warning-item-text">' + formatWarningText(text) + '</div>' +
         '</div></div>';
     }).join('');
+  }
+
+  // MET Malaysia sometimes packs several "Label:  value" fields into one
+  // string, delimited by long runs of spaces rather than real line breaks
+  // (e.g. tropical storm advisories). Split on those runs so each field
+  // renders on its own line instead of collapsing into one clump.
+  function formatWarningText(text) {
+    const segments = String(text)
+      .split(/ {3,}/)
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+    return segments.map(escapeHtml).join('<br>');
   }
 })();
