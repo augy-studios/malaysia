@@ -9,7 +9,7 @@
     forecast: 'mb-weather-forecast-cache',
     warning: 'mb-weather-warning-cache'
   };
-  const PAGE_SIZE = 15;
+  const PAGE_SIZE = 3;
 
   const els = {};
 
