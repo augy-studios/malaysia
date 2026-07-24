@@ -1,10 +1,34 @@
-const CACHE = "malaysia-boleh-v1";
+const CACHE = "malaysia-boleh-v3";
+const API_CACHE = "malaysia-boleh-api-v3";
 
 const ASSETS = [
   "/",
   "/index.html",
-  "/style.css",
   "/script.js",
+  "/css/base.css",
+  "/css/themes.css",
+  "/js/icons.js",
+  "/js/theme.js",
+  "/weather/",
+  "/weather/index.html",
+  "/weather/weather.css",
+  "/weather/weather.js",
+  "/quake/",
+  "/quake/index.html",
+  "/quake/quake.css",
+  "/quake/quake.js",
+  "/flood-alerts/",
+  "/flood-alerts/index.html",
+  "/flood-alerts/flood-alerts.css",
+  "/flood-alerts/flood-alerts.js",
+  "/trains/",
+  "/trains/index.html",
+  "/trains/trains.css",
+  "/trains/trains.js",
+  "/bus/",
+  "/bus/index.html",
+  "/bus/bus.css",
+  "/bus/bus.js",
   "/MYB-main.png",
   "/MYB-192.png",
   "/MYB-512.png",
@@ -30,7 +54,7 @@ self.addEventListener('activate', event => {
     .then(keys =>
       Promise.all(
         keys
-        .filter(k => k !== CACHE)
+        .filter(k => k !== CACHE && k !== API_CACHE)
         .map(k => caches.delete(k))
       )
     )
@@ -46,9 +70,9 @@ self.addEventListener('fetch', event => {
   } = event;
   const url = new URL(request.url);
 
-  // API - network-first
+  // API - network-first, falling back to last-known cached response when offline
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkFirstApi(request));
     return;
   }
 
@@ -64,15 +88,31 @@ self.addEventListener('fetch', event => {
 
 /* -- Strategies -- */
 
-async function networkFirst(request) {
+async function networkFirstApi(request) {
+  const cache = await caches.open(API_CACHE);
+
   try {
     const response = await fetch(request);
+    if (response.ok && request.method === 'GET') {
+      cache.put(request, response.clone());
+    }
     return response;
   } catch {
+    const cached = await cache.match(request);
+    if (cached) {
+      const headers = new Headers(cached.headers);
+      headers.set('X-Served-From', 'offline-cache');
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers
+      });
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'You appear to be offline.'
+        error: 'You appear to be offline and no cached data is available yet.'
       }), {
         status: 503,
         headers: {

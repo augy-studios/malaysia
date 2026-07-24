@@ -40,5 +40,37 @@
         "entertainment",
         "lifestyle",
         "utilities"
+    ],
+    "shortcuts": [
+        {
+            "name": "Weather Forecast",
+            "short_name": "Weather",
+            "url": "/weather/",
+            "description": "7-day MET Malaysia weather forecast"
+        },
+        {
+            "name": "Earthquake Warnings",
+            "short_name": "Earthquakes",
+            "url": "/quake/",
+            "description": "Live MET Malaysia earthquake warnings"
+        },
+        {
+            "name": "Flood Alerts",
+            "short_name": "Floods",
+            "url": "/flood-alerts/",
+            "description": "JPS river levels and flood warnings"
+        },
+        {
+            "name": "Trains & Transit",
+            "short_name": "Trains",
+            "url": "/trains/",
+            "description": "Rapid KL and KTMB schedules and live positions"
+        },
+        {
+            "name": "Buses",
+            "short_name": "Buses",
+            "url": "/bus/",
+            "description": "Rapid KL/Penang/Kuantan and myBAS Johor schedules and live positions"
+        }
     ]
 }

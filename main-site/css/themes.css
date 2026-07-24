@@ -1,0 +1,83 @@
+/* ==========================================================================
+   Theme palettes - static colours only, no gradients/orbs/blobs.
+   Each theme sets a brand swatch plus derived surface/border/strong colours.
+   Default theme is "classic".
+   ========================================================================== */
+
+:root,
+[data-theme="classic"] {
+  --brand: #ccffcc;
+  --brand-strong: #2f9e44;
+  --bg: #f2fbf2;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(247, 255, 247, 0.92);
+  --border: rgba(47, 158, 68, 0.25);
+  --ink: #10181a;
+  --muted: #56635d;
+}
+
+[data-theme="not-green-1"] {
+  --brand: #ffcccc;
+  --brand-strong: #d64545;
+  --bg: #fdf2f2;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(255, 247, 247, 0.92);
+  --border: rgba(214, 69, 69, 0.25);
+  --ink: #1a1010;
+  --muted: #6a5555;
+}
+
+[data-theme="not-green-2"] {
+  --brand: #ccccff;
+  --brand-strong: #5b5bd6;
+  --bg: #f3f3fd;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(248, 248, 255, 0.92);
+  --border: rgba(91, 91, 214, 0.25);
+  --ink: #12121e;
+  --muted: #5a5a70;
+}
+
+[data-theme="not-green-3"] {
+  --brand: #ffffcc;
+  --brand-strong: #b58900;
+  --bg: #fdfdf0;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(255, 255, 245, 0.92);
+  --border: rgba(181, 137, 0, 0.25);
+  --ink: #1c1a10;
+  --muted: #6e6650;
+}
+
+[data-theme="not-green-4"] {
+  --brand: #ffccff;
+  --brand-strong: #c0389c;
+  --bg: #fdf2fc;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(255, 247, 254, 0.92);
+  --border: rgba(192, 56, 156, 0.25);
+  --ink: #1e1019;
+  --muted: #6e5568;
+}
+
+[data-theme="not-green-5"] {
+  --brand: #ccffff;
+  --brand-strong: #0891b2;
+  --bg: #f0fdfd;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-solid: rgba(245, 255, 255, 0.92);
+  --border: rgba(8, 145, 178, 0.25);
+  --ink: #0f1a1c;
+  --muted: #4f6a6e;
+}
+
+[data-theme="really-light-green"] {
+  --brand: #ffffff;
+  --brand-strong: #6b7280;
+  --bg: #fafafa;
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-solid: rgba(255, 255, 255, 0.95);
+  --border: rgba(107, 114, 128, 0.25);
+  --ink: #101418;
+  --muted: #5b6470;
+}

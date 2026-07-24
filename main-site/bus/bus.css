@@ -1,0 +1,238 @@
+/* Bus page - page-specific layout only. Reuses .glass/.btn/.state-banner/.spinner
+   from base.css and theme colour variables from themes.css. */
+
+.bus-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 24px;
+  flex-wrap: wrap;
+}
+
+.bus-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.98rem;
+  font-family: inherit;
+  color: var(--muted);
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.bus-tab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.bus-tab[aria-selected="true"] {
+  color: #fff;
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+}
+
+.bus-tab-icon .icon,
+.bus-tab .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.bus-panel[hidden] {
+  display: none;
+}
+
+.bus-category-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.bus-category-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.bus-select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--surface-solid);
+}
+
+.bus-section {
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+.bus-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.bus-section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.bus-section-head h2 .icon {
+  color: var(--brand-strong);
+  width: 20px;
+  height: 20px;
+}
+
+.bus-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bus-updated {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.bus-refresh-btn {
+  padding: 7px 14px;
+  font-size: 0.85rem;
+}
+
+.bus-refresh-btn .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.bus-refresh-btn.is-loading .icon {
+  animation: spin 0.8s linear infinite;
+}
+
+/* -- Loading state -- */
+
+.bus-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  padding: 6px 0;
+}
+
+/* -- Static feed manifest card -- */
+
+.bus-manifest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bus-manifest-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.bus-manifest-row:last-of-type {
+  border-bottom: none;
+}
+
+.bus-manifest-row dt {
+  color: var(--muted);
+}
+
+.bus-manifest-row dd {
+  color: var(--ink);
+  text-align: right;
+}
+
+.bus-download-link {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* -- Vehicle list -- */
+
+.bus-vehicle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bus-vehicle-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.bus-vehicle-icon {
+  color: var(--brand-strong);
+  display: flex;
+}
+
+.bus-vehicle-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bus-vehicle-route {
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.bus-vehicle-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.bus-vehicle-time {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bus-vehicle-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .bus-vehicle-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .bus-vehicle-time {
+    grid-column: 2 / 3;
+    text-align: left;
+  }
+}

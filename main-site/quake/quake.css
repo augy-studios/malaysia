@@ -1,0 +1,131 @@
+/* ==========================================================================
+   Quake page - page-specific layout only.
+   Reuses .glass / .btn / .state-banner / .spinner from base.css.
+   ========================================================================== */
+
+.quake-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.quake-updated {
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quake-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.quake-card {
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.quake-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--brand-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quake-card-icon.severity-high {
+  color: #991b1b;
+}
+
+.quake-card-icon.severity-medium {
+  color: #9a3412;
+}
+
+.quake-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.quake-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.quake-mag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-strong);
+  border: 1px solid var(--border);
+}
+
+.quake-mag.severity-high {
+  background: rgba(185, 28, 28, 0.12);
+  color: #991b1b;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.quake-mag.severity-medium {
+  background: rgba(234, 88, 12, 0.12);
+  color: #9a3412;
+  border-color: rgba(234, 88, 12, 0.3);
+}
+
+.quake-location {
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.quake-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+.quake-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.quake-distance {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .quake-card {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .quake-card-icon {
+    width: 36px;
+    height: 36px;
+  }
+}

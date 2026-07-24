@@ -3,3 +3,5 @@
 # Allow crawling of all content, including search engine robots
 User-agent: *
 Allow: /
+
+Sitemap: https://malaysia.uwuapps.org/sitemap.xml

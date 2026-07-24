@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FMCYFTFPEL"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-FMCYFTFPEL');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9715826188316382"
+        crossorigin="anonymous"></script>
+
+    <link rel="manifest" href="/manifest.json" />
+
+    <meta charset="utf-8">
+    <title>Buses | Malaysia Boleh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Live Malaysian bus data - Rapid Bus KL/Penang/Kuantan and myBAS Johor Bahru schedules and vehicle positions.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Buses | Malaysia Boleh" />
+    <meta property="og:site_name" content="UwU Apps" />
+    <meta property="og:description" content="Live Malaysian bus data - Rapid Bus KL/Penang/Kuantan and myBAS Johor Bahru schedules and vehicle positions." />
+    <meta property="og:url" content="https://malaysia.uwuapps.org/bus/" />
+    <link rel="canonical" href="https://malaysia.uwuapps.org/bus/">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+    <link rel="stylesheet" href="/css/themes.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/bus/bus.css">
+    <meta name="theme-color" content="#ccffcc" />
+
+    <!-- Embed Image -->
+    <link rel="apple-touch-icon" href="/MYB-main.png">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:image:src" content="/MYB-main.png">
+    <meta property="og:image" content="/MYB-main.png" />
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand-mark" href="/">
+                <img src="/MYB-main.png" alt="Malaysia Boleh logo">
+                <span>Malaysia Boleh</span>
+            </a>
+            <div class="topbar-spacer"></div>
+            <div class="topbar-actions">
+                <a id="coffeeButton" class="btn btn-coffee" href="https://donate.stripe.com/28o2akeAr3hv0DK6oo"
+                    target="_blank" rel="noopener noreferrer"></a>
+                <button id="themeToggle" class="btn" type="button"></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <a class="back-link" href="/">&larr; Back to Malaysia Boleh</a>
+
+        <section class="hero">
+            <h1>Buses</h1>
+            <p>Rapid Bus KL, Penang and Kuantan (Prasarana) plus myBAS Johor Bahru - schedule feeds and live vehicle
+                positions, via data.gov.my.</p>
+        </section>
+
+        <div class="bus-tabs" role="tablist" aria-label="Bus network">
+            <button class="bus-tab" id="tabPrasarana" role="tab" aria-selected="true" type="button">
+                <span class="bus-tab-icon" data-icon="bus"></span>
+                Rapid Bus
+            </button>
+            <button class="bus-tab" id="tabMybas" role="tab" aria-selected="false" type="button">
+                <span class="bus-tab-icon" data-icon="bus"></span>
+                myBAS Johor
+            </button>
+        </div>
+
+        <!-- ===================== Rapid Bus (Prasarana) panel ===================== -->
+        <section id="panelPrasarana" class="bus-panel">
+            <div class="bus-category-row">
+                <label for="prasaranaCategory" class="bus-category-label">Category</label>
+                <select id="prasaranaCategory" class="bus-select">
+                    <option value="rapid-bus-kl">Rapid Bus KL</option>
+                    <option value="rapid-bus-penang">Rapid Bus Penang</option>
+                    <option value="rapid-bus-mrtfeeder">Rapid Bus MRT Feeder</option>
+                </select>
+            </div>
+
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="mapPin"></span> Schedule feed (GTFS static)</h2>
+                </div>
+                <div id="prasaranaStaticBody"></div>
+            </div>
+
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="signal"></span> Live vehicle positions</h2>
+                    <div class="bus-section-actions">
+                        <span id="prasaranaRtUpdated" class="bus-updated"></span>
+                        <button id="prasaranaRtRefresh" class="btn bus-refresh-btn" type="button">
+                            <span data-icon="refresh"></span> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="prasaranaRtBody"></div>
+            </div>
+        </section>
+
+        <!-- ===================== myBAS Johor panel ===================== -->
+        <section id="panelMybas" class="bus-panel" hidden>
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="mapPin"></span> Schedule feed (GTFS static)</h2>
+                </div>
+                <div id="mybasStaticBody"></div>
+            </div>
+
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="signal"></span> Live vehicle positions</h2>
+                    <div class="bus-section-actions">
+                        <span id="mybasRtUpdated" class="bus-updated"></span>
+                        <button id="mybasRtRefresh" class="btn bus-refresh-btn" type="button">
+                            <span data-icon="refresh"></span> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="mybasRtBody"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>Built by UwU Apps &middot; Data via <a href="https://data.gov.my" target="_blank"
+                rel="noopener noreferrer">data.gov.my</a></p>
+    </footer>
+
+    <script src="/js/icons.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/bus/bus.js"></script>
+</body>
+
+</html>

@@ -16,22 +16,23 @@
     <link rel="manifest" href="/manifest.json" />
 
     <meta charset="utf-8">
-    <title>Malaysia Boleh | UwU Apps</title>
+    <title>Weather | Malaysia Boleh</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Can is can, the original! Live Malaysian public data - weather, earthquakes, floods and trains.">
+    <meta name="description" content="Bawa payung ke? Live 7-day MET Malaysia forecasts by district and active weather warnings, via data.gov.my.">
 
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Malaysia Boleh | UwU Apps" />
+    <meta property="og:title" content="Weather | Malaysia Boleh" />
     <meta property="og:site_name" content="UwU Apps" />
-    <meta property="og:description" content="Can is can, the original! Live Malaysian public data - weather, earthquakes, floods and trains." />
-    <meta property="og:url" content="https://malaysia.uwuapps.org/" />
-    <link rel="canonical" href="https://malaysia.uwuapps.org/">
+    <meta property="og:description" content="Bawa payung ke? Live 7-day MET Malaysia forecasts by district and active weather warnings, via data.gov.my." />
+    <meta property="og:url" content="https://malaysia.uwuapps.org/weather/" />
+    <link rel="canonical" href="https://malaysia.uwuapps.org/weather/">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
     <link rel="stylesheet" href="/css/themes.css">
     <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/weather/weather.css">
     <meta name="theme-color" content="#ccffcc" />
 
     <!-- Embed Image -->
@@ -60,13 +61,43 @@
     </header>
 
     <main class="container">
-        <section class="hero">
-            <h1>Live Malaysian public data, in one place</h1>
-            <p>Keyless feeds from MET Malaysia, JPS and Prasarana/KTMB via data.gov.my - weather, earthquakes, floods
-                and trains, all on one dashboard.</p>
+        <a class="back-link" href="/">&larr; Malaysia Boleh</a>
+
+        <section class="hero weather-hero">
+            <h1>Bawa payung ke?</h1>
+            <p>Live 7-day forecasts by district and active weather warnings from MET Malaysia, via data.gov.my.</p>
         </section>
 
-        <section class="page-grid" id="pageGrid" aria-label="Available pages"></section>
+        <section class="glass umbrella-card" id="umbrellaCard" aria-live="polite">
+            <div class="umbrella-icon" id="umbrellaIcon"></div>
+            <div class="umbrella-body">
+                <p class="umbrella-headline" id="umbrellaHeadline">Loading today's outlook&hellip;</p>
+                <p class="umbrella-sub" id="umbrellaSub">Fetching the latest forecast.</p>
+            </div>
+        </section>
+
+        <div class="weather-toolbar">
+            <label class="location-picker">
+                <span>District</span>
+                <select id="locationSelect" aria-label="Select district">
+                    <option value="">All districts</option>
+                </select>
+            </label>
+            <div class="toolbar-right">
+                <span class="last-updated" id="lastUpdated"></span>
+                <button class="btn" id="refreshBtn" type="button">
+                    <span id="refreshIcon"></span>
+                    <span class="btn-label">Refresh</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="forecastState"></div>
+        <section class="forecast-grid" id="forecastGrid"></section>
+
+        <h2 class="section-title">Active warnings</h2>
+        <div id="warningState"></div>
+        <section class="warning-list" id="warningList"></section>
     </main>
 
     <footer class="site-footer">
@@ -76,7 +107,7 @@
 
     <script src="/js/icons.js"></script>
     <script src="/js/theme.js"></script>
-    <script src="/script.js"></script>
+    <script src="/weather/weather.js"></script>
 </body>
 
 </html>

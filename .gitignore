@@ -1,0 +1,14 @@
+# Claude Code local settings/session data - not part of the project
+.claude/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+
+# Vercel local
+.vercel/
+
+# Dependencies (if any tooling is added later)
+node_modules/

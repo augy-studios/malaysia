@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FMCYFTFPEL"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-FMCYFTFPEL');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9715826188316382"
+        crossorigin="anonymous"></script>
+
+    <link rel="manifest" href="/manifest.json" />
+
+    <meta charset="utf-8">
+    <title>Flood Alerts | Malaysia Boleh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Live river water levels and flood warnings across Malaysia, via JPS / data.gov.my.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Flood Alerts | Malaysia Boleh" />
+    <meta property="og:site_name" content="UwU Apps" />
+    <meta property="og:description" content="Live river water levels and flood warnings across Malaysia, via JPS / data.gov.my." />
+    <meta property="og:url" content="https://malaysia.uwuapps.org/flood-alerts/" />
+    <link rel="canonical" href="https://malaysia.uwuapps.org/flood-alerts/">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+    <link rel="stylesheet" href="/css/themes.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/flood-alerts/flood-alerts.css">
+    <meta name="theme-color" content="#ccffcc" />
+
+    <!-- Embed Image -->
+    <link rel="apple-touch-icon" href="/MYB-main.png">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:image:src" content="/MYB-main.png">
+    <meta property="og:image" content="/MYB-main.png" />
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand-mark" href="/">
+                <img src="/MYB-main.png" alt="Malaysia Boleh logo">
+                <span>Malaysia Boleh</span>
+            </a>
+            <div class="topbar-spacer"></div>
+            <div class="topbar-actions">
+                <a id="coffeeButton" class="btn btn-coffee" href="https://donate.stripe.com/28o2akeAr3hv0DK6oo"
+                    target="_blank" rel="noopener noreferrer"></a>
+                <button id="themeToggle" class="btn" type="button"></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <a class="back-link" href="/" id="backLink"></a>
+
+        <section class="hero">
+            <h1>Flood Alerts</h1>
+            <p>Live river water levels and flood warnings from JPS (Department of Irrigation and Drainage), via
+                data.gov.my.</p>
+        </section>
+
+        <div id="statusHero" class="fa-status-hero glass" hidden></div>
+
+        <div id="loadingState" class="fa-loading">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Loading flood warning data&hellip;</span>
+        </div>
+
+        <div id="errorState" class="state-banner danger" hidden>
+            <span id="errorIcon"></span>
+            <span id="errorText">Something went wrong.</span>
+            <button id="retryButton" class="btn" type="button">
+                <span id="retryIcon"></span>
+                <span class="btn-label">Retry</span>
+            </button>
+        </div>
+
+        <div id="emptyState" class="state-banner info" hidden>
+            <span id="emptyIcon"></span>
+            <span>No flood data available right now.</span>
+        </div>
+
+        <div id="contentState" hidden>
+            <div class="fa-toolbar glass">
+                <div class="fa-search-wrap">
+                    <input id="searchInput" type="search" class="fa-search-input"
+                        placeholder="Search by station, river, district or state&hellip;" autocomplete="off">
+                </div>
+                <div class="fa-toolbar-meta">
+                    <span id="updatedText" class="fa-updated"></span>
+                    <button id="refreshButton" class="btn" type="button">
+                        <span id="refreshIcon"></span>
+                        <span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="fa-filter-row" id="filterRow">
+                <button class="fa-filter-chip" data-filter="alert" type="button">Alert / Warning / Danger</button>
+                <button class="fa-filter-chip" data-filter="all" type="button">All stations</button>
+            </div>
+
+            <p id="resultCount" class="fa-result-count"></p>
+
+            <div id="stationList" class="fa-station-list"></div>
+
+            <p id="noResults" class="fa-no-results" hidden>No stations match your search.</p>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>Built by UwU Apps &middot; Data via <a href="https://data.gov.my" target="_blank"
+                rel="noopener noreferrer">data.gov.my</a> (JPS flood warning feed)</p>
+    </footer>
+
+    <script src="/js/icons.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/flood-alerts/flood-alerts.js"></script>
+</body>
+
+</html>

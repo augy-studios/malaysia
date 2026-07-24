@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FMCYFTFPEL"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-FMCYFTFPEL');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9715826188316382"
+        crossorigin="anonymous"></script>
+
+    <link rel="manifest" href="/manifest.json" />
+
+    <meta charset="utf-8">
+    <title>Trains | Malaysia Boleh</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Rapid KL (LRT/MRT/monorail/bus) and KTMB schedules plus live KTMB train positions - keyless data from data.gov.my.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Trains | Malaysia Boleh" />
+    <meta property="og:site_name" content="UwU Apps" />
+    <meta property="og:description" content="Rapid KL (LRT/MRT/monorail/bus) and KTMB schedules plus live KTMB train positions - keyless data from data.gov.my." />
+    <meta property="og:url" content="https://malaysia.uwuapps.org/trains/" />
+    <link rel="canonical" href="https://malaysia.uwuapps.org/trains/">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+    <link rel="stylesheet" href="/css/themes.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/trains/trains.css">
+    <meta name="theme-color" content="#ccffcc" />
+
+    <!-- Embed Image -->
+    <link rel="apple-touch-icon" href="/MYB-main.png">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:image:src" content="/MYB-main.png">
+    <meta property="og:image" content="/MYB-main.png" />
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand-mark" href="/">
+                <img src="/MYB-main.png" alt="Malaysia Boleh logo">
+                <span>Malaysia Boleh</span>
+            </a>
+            <div class="topbar-spacer"></div>
+            <div class="topbar-actions">
+                <a id="coffeeButton" class="btn btn-coffee" href="https://donate.stripe.com/28o2akeAr3hv0DK6oo"
+                    target="_blank" rel="noopener noreferrer"></a>
+                <button id="themeToggle" class="btn" type="button"></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <a class="back-link" href="/">&larr; Back to dashboard</a>
+
+        <section class="hero">
+            <h1>Trains</h1>
+            <p>Rapid KL (LRT, MRT, monorail and bus) and KTMB schedules, plus live KTMB train positions - keyless
+                public feeds via data.gov.my.</p>
+        </section>
+
+        <div class="tabs" role="tablist" aria-label="Train data sections">
+            <button class="tab-btn active" type="button" role="tab" aria-selected="true" data-tab="rapidkl">
+                <span class="tab-icon" data-icon="train"></span> Rapid KL
+            </button>
+            <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="ktmb">
+                <span class="tab-icon" data-icon="train"></span> KTMB Schedules
+            </button>
+            <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="live">
+                <span class="tab-icon" data-icon="signal"></span> Live KTMB Positions
+            </button>
+        </div>
+
+        <!-- Rapid KL panel -->
+        <section class="tab-panel active" id="panel-rapidkl" role="tabpanel">
+            <div class="glass section-card">
+                <div class="section-head">
+                    <h2>Rapid KL routes &amp; stations</h2>
+                    <button class="btn btn-small" type="button" data-retry="rapidkl">
+                        <span data-icon="refresh"></span><span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+                <p class="section-sub">LRT, MRT, monorail and bus routes and stations, from the Prasarana GTFS feed.
+                    Cached for an hour on this device.</p>
+                <div id="rapidklState"></div>
+                <div class="directory-grid" id="rapidklContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="rapidklRouteSearch">Search routes</label>
+                        <input class="search-input" id="rapidklRouteSearch" type="search"
+                            placeholder="e.g. Kelana Jaya, MRT, AGL...">
+                        <ul class="directory-list" id="rapidklRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label" for="rapidklStopSearch">Search stations</label>
+                        <input class="search-input" id="rapidklStopSearch" type="search"
+                            placeholder="e.g. Ampang, KLCC, Cempaka...">
+                        <ul class="directory-list" id="rapidklStopList"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KTMB schedules panel -->
+        <section class="tab-panel" id="panel-ktmb" role="tabpanel" hidden>
+            <div class="glass section-card">
+                <div class="section-head">
+                    <h2>KTMB routes &amp; stations</h2>
+                    <button class="btn btn-small" type="button" data-retry="ktmb">
+                        <span data-icon="refresh"></span><span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+                <p class="section-sub">KTMB intercity and Komuter lines and stations, from the KTMB GTFS feed. Cached
+                    for an hour on this device.</p>
+                <div id="ktmbState"></div>
+                <div class="directory-grid" id="ktmbContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="ktmbRouteSearch">Search lines</label>
+                        <input class="search-input" id="ktmbRouteSearch" type="search"
+                            placeholder="e.g. Seremban, Port Klang, Ipoh...">
+                        <ul class="directory-list" id="ktmbRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label" for="ktmbStopSearch">Search stations</label>
+                        <input class="search-input" id="ktmbStopSearch" type="search"
+                            placeholder="e.g. Batu Caves, Ipoh, Padang Besar...">
+                        <ul class="directory-list" id="ktmbStopList"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live KTMB positions panel -->
+        <section class="tab-panel" id="panel-live" role="tabpanel" hidden>
+            <div class="glass section-card">
+                <div class="section-head">
+                    <h2>Live KTMB positions</h2>
+                    <button class="btn btn-small" type="button" data-retry="live">
+                        <span data-icon="refresh"></span><span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+                <p class="section-sub" id="liveUpdatedLine">
+                    <span data-icon="clock"></span> Last updated: <span id="liveUpdatedAt">-</span>
+                </p>
+                <div id="liveState"></div>
+                <div class="live-table-wrap" id="liveContent" hidden>
+                    <table class="live-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Vehicle</th>
+                                <th>Trip / Route</th>
+                                <th>Coordinates</th>
+                                <th>Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="liveTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>Built by UwU Apps &middot; Data via <a href="https://data.gov.my" target="_blank"
+                rel="noopener noreferrer">data.gov.my</a></p>
+    </footer>
+
+    <script src="/js/icons.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/trains/trains.js"></script>
+</body>
+
+</html>

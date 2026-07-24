@@ -1,0 +1,248 @@
+/* ==========================================================================
+   Weather page - page-specific layout only.
+   Reuses .glass / .btn / .state-banner / .spinner from base.css.
+   ========================================================================== */
+
+.weather-hero {
+  padding-top: 12px;
+}
+
+/* -- Umbrella summary card -- */
+
+.umbrella-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  margin: 20px 0 24px;
+}
+
+.umbrella-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--brand);
+  color: var(--brand-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.umbrella-icon .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.umbrella-body {
+  min-width: 0;
+}
+
+.umbrella-headline {
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.umbrella-sub {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+/* -- Toolbar -- */
+
+.weather-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.location-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.location-picker select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 200px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.last-updated {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+#refreshIcon {
+  display: inline-flex;
+}
+
+.refresh-spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+/* -- Forecast grid -- */
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 18px 0 32px;
+}
+
+.forecast-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.forecast-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.forecast-card-head h3 {
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.forecast-temp {
+  font-size: 0.95rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.forecast-temp strong {
+  color: var(--ink);
+}
+
+.forecast-days {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.forecast-day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.forecast-day:first-child {
+  border-top: none;
+}
+
+.forecast-day-icon {
+  flex-shrink: 0;
+  color: var(--brand-strong);
+}
+
+.forecast-day-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.forecast-day-date {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.forecast-day-text {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.forecast-day-temp {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* -- Section title -- */
+
+.section-title {
+  font-size: 1.3rem;
+  color: var(--ink);
+  margin: 8px 0 4px;
+}
+
+/* -- Warnings -- */
+
+.warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 24px;
+}
+
+.warning-item {
+  align-items: flex-start;
+}
+
+.warning-item-icon {
+  margin-top: 2px;
+}
+
+.warning-item-body {
+  min-width: 0;
+}
+
+.warning-item-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.warning-item-meta {
+  font-size: 0.82rem;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.warning-item-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .umbrella-card {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .weather-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-right {
+    justify-content: space-between;
+  }
+
+  .location-picker select {
+    min-width: 0;
+    width: 100%;
+  }
+}

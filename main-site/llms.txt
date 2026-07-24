@@ -1,0 +1,36 @@
+# Malaysia Boleh
+
+> A free PWA dashboard by UwU Apps surfacing live Malaysian public data through keyless government feeds (data.gov.my). Every page proxies an official public API through a Vercel serverless function with caching and error handling, and renders it as a simple, readable page.
+
+Live at: https://malaysia.uwuapps.org
+
+## Pages
+
+- [Home](https://malaysia.uwuapps.org/): directory of every page in the app.
+- [Weather](https://malaysia.uwuapps.org/weather/): 7-day forecast and active weather warnings from MET Malaysia.
+- [Earthquakes](https://malaysia.uwuapps.org/quake/): live earthquake warnings from MET Malaysia (Sabah/regional tremors).
+- [Flood Alerts](https://malaysia.uwuapps.org/flood-alerts/): river water levels and flood warnings from JPS.
+- [Trains](https://malaysia.uwuapps.org/trains/): Rapid KL (LRT/MRT/monorail) and KTMB schedules, plus live KTMB train positions.
+- [Bus](https://malaysia.uwuapps.org/bus/): Rapid KL/Penang/Kuantan bus schedules and myBAS Johor Bahru schedules, plus live bus positions.
+
+## Upstream data sources
+
+All data originates from data.gov.my, a Malaysian government open-data initiative. None of these feeds require an API key:
+
+- MET Malaysia weather forecast: https://api.data.gov.my/weather/forecast/
+- MET Malaysia weather warnings: https://api.data.gov.my/weather/warning/
+- MET Malaysia earthquake warnings: https://api.data.gov.my/weather/warning/earthquake/
+- JPS flood warnings: https://api.data.gov.my/flood-warning/
+- Prasarana rail GTFS (static): https://api.data.gov.my/gtfs-static/prasarana
+- Prasarana bus GTFS (static): https://api.data.gov.my/gtfs-static/prasarana
+- KTMB GTFS (static): https://api.data.gov.my/gtfs-static/ktmb
+- KTMB live positions (GTFS-realtime): https://api.data.gov.my/gtfs-realtime/vehicle-position/ktmb
+- Prasarana bus live positions (GTFS-realtime): https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana
+- myBAS Johor Bahru GTFS (static): https://api.data.gov.my/gtfs-static/mybas-johor
+- myBAS Johor Bahru live positions (GTFS-realtime): https://api.data.gov.my/gtfs-realtime/vehicle-position/mybas-johor
+
+## Notes for crawlers / agents
+
+- This is a client-rendered static site; each page fetches its data client-side from this site's own `/api/*` serverless functions, which in turn proxy and cache the upstream data.gov.my feeds above.
+- Data updates continuously and is not archived; treat any scraped values as a point-in-time snapshot, not a historical record.
+- No authentication, login, or paid tier exists anywhere on this site.
