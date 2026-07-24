@@ -56,6 +56,10 @@
   display: none;
 }
 
+.tab-panel:not([hidden]) {
+  animation: panelFadeIn 0.2s ease;
+}
+
 /* -- Section card -- */
 
 .section-card {

@@ -46,6 +46,10 @@
   display: none;
 }
 
+.bus-panel:not([hidden]) {
+  animation: panelFadeIn 0.2s ease;
+}
+
 .bus-category-row {
   display: flex;
   align-items: center;
