@@ -23,13 +23,11 @@
 
   function init() {
     cacheEls();
-    wireBackLink();
     wireEvents();
     loadData(false);
   }
 
   function cacheEls() {
-    els.backLink = document.getElementById("backLink");
     els.statusHero = document.getElementById("statusHero");
     els.loadingState = document.getElementById("loadingState");
     els.errorState = document.getElementById("errorState");
@@ -48,14 +46,6 @@
     els.resultCount = document.getElementById("resultCount");
     els.stationList = document.getElementById("stationList");
     els.noResults = document.getElementById("noResults");
-  }
-
-  function wireBackLink() {
-    if (!els.backLink || !window.Icons) return;
-    els.backLink.innerHTML =
-      Icons.html("chevronRight", { size: 16, className: "icon fa-back-icon" }) +
-      " <span>Back to Malaysia Boleh</span>";
-    els.backLink.style.display = "inline-flex";
   }
 
   function wireEvents() {

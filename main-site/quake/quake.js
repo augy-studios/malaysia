@@ -19,14 +19,8 @@
   var refreshBtn = document.getElementById("quakeRefresh");
   var stateEl = document.getElementById("quakeState");
   var listEl = document.getElementById("quakeList");
-  var backLink = document.getElementById("backLink");
 
   function init() {
-    if (backLink && window.Icons) {
-      backLink.innerHTML = Icons.html("chevronRight", { size: 16 }) + " Back to Malaysia Boleh";
-      backLink.style.flexDirection = "row-reverse";
-      backLink.style.justifyContent = "flex-end";
-    }
     if (refreshBtn && window.Icons) {
       refreshBtn.innerHTML = Icons.html("refresh", { size: 16 }) + ' <span class="btn-label">Refresh</span>';
       refreshBtn.addEventListener("click", function () {
