@@ -133,6 +133,35 @@
                 </div>
                 <div id="prasaranaRtBody"></div>
             </div>
+
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="clock"></span> Look up a single bus's full trip</h2>
+                </div>
+                <p class="section-sub">Pick a route, then a specific bus, to see every stop and time along its
+                    trip.</p>
+                <div id="prasaranaLookupState"></div>
+                <div class="lookup-grid" id="prasaranaLookupContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="prasaranaLookupRouteSearch">Search routes</label>
+                        <input class="search-input" id="prasaranaLookupRouteSearch" type="search"
+                            placeholder="e.g. Rapid, U6801, Sunway...">
+                        <ul class="directory-list" id="prasaranaLookupRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Buses on this route</label>
+                        <ul class="directory-list" id="prasaranaLookupTripList">
+                            <li class="directory-empty">Pick a route to see its buses.</li>
+                        </ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Full trip</label>
+                        <ul class="directory-list lookup-itinerary" id="prasaranaLookupItinerary">
+                            <li class="directory-empty">Pick a bus to see its full trip.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- ===================== myBAS Johor panel ===================== -->
@@ -179,6 +208,35 @@
                     </div>
                 </div>
                 <div id="mybasRtBody"></div>
+            </div>
+
+            <div class="glass bus-section">
+                <div class="bus-section-head">
+                    <h2><span class="bus-icon" data-icon="clock"></span> Look up a single bus's full trip</h2>
+                </div>
+                <p class="section-sub">Pick a route, then a specific bus, to see every stop and time along its
+                    trip.</p>
+                <div id="mybasLookupState"></div>
+                <div class="lookup-grid" id="mybasLookupContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="mybasLookupRouteSearch">Search routes</label>
+                        <input class="search-input" id="mybasLookupRouteSearch" type="search"
+                            placeholder="e.g. Larkin, JB Sentral...">
+                        <ul class="directory-list" id="mybasLookupRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Buses on this route</label>
+                        <ul class="directory-list" id="mybasLookupTripList">
+                            <li class="directory-empty">Pick a route to see its buses.</li>
+                        </ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Full trip</label>
+                        <ul class="directory-list lookup-itinerary" id="mybasLookupItinerary">
+                            <li class="directory-empty">Pick a bus to see its full trip.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

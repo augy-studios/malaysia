@@ -78,6 +78,9 @@
             <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="live">
                 <span class="tab-icon" data-icon="signal"></span> Live KTMB Positions
             </button>
+            <button class="tab-btn" type="button" role="tab" aria-selected="false" data-tab="lookup">
+                <span class="tab-icon" data-icon="clock"></span> Train Lookup
+            </button>
         </div>
 
         <!-- Rapid KL panel -->
@@ -174,6 +177,47 @@
                         </thead>
                         <tbody id="liveTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Train Lookup panel -->
+        <section class="tab-panel" id="panel-lookup" role="tabpanel" hidden>
+            <div class="glass section-card">
+                <div class="section-head">
+                    <h2>Look up a single train's full journey</h2>
+                </div>
+                <p class="section-sub">Pick a system, then a line, then a specific train to see every stop and
+                    arrival/departure time along its route.</p>
+
+                <div class="lookup-system-row" role="tablist" aria-label="Train system">
+                    <button class="chip-btn active" type="button" role="tab" aria-selected="true"
+                        data-lookup-system="rapidkl">Rapid KL</button>
+                    <button class="chip-btn" type="button" role="tab" aria-selected="false"
+                        data-lookup-system="ktmb">KTMB</button>
+                </div>
+
+                <div id="lookupState"></div>
+
+                <div class="lookup-grid" id="lookupContent" hidden>
+                    <div class="directory-col">
+                        <label class="search-label" for="lookupRouteSearch">Search lines</label>
+                        <input class="search-input" id="lookupRouteSearch" type="search"
+                            placeholder="e.g. Kelana Jaya, Seremban...">
+                        <ul class="directory-list" id="lookupRouteList"></ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Trains on this line</label>
+                        <ul class="directory-list" id="lookupTripList">
+                            <li class="directory-empty">Pick a line to see its trains.</li>
+                        </ul>
+                    </div>
+                    <div class="directory-col">
+                        <label class="search-label">Full journey</label>
+                        <ul class="directory-list lookup-itinerary" id="lookupItinerary">
+                            <li class="directory-empty">Pick a train to see its full journey.</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </section>

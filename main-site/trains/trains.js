@@ -11,9 +11,10 @@
   var MAX_TIMES_SHOWN = 40; // per route, per stop - defensive cap on high-frequency routes
 
   var state = {
-    rapidkl: { loaded: false, routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: '', expandedStopId: null },
-    ktmb: { loaded: false, routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: '', expandedStopId: null },
-    live: { loaded: false, vehicles: [], fetchedAt: null }
+    rapidkl: { loaded: false, routes: [], stops: [], routeStops: {}, stopSchedule: {}, trips: [], tripStops: {}, selectedRouteId: null, stopQuery: '', expandedStopId: null },
+    ktmb: { loaded: false, routes: [], stops: [], routeStops: {}, stopSchedule: {}, trips: [], tripStops: {}, selectedRouteId: null, stopQuery: '', expandedStopId: null },
+    live: { loaded: false, vehicles: [], fetchedAt: null },
+    lookup: { system: 'rapidkl', routeQuery: '', selectedRouteId: null, selectedTripId: null }
   };
 
   /* -- icons -- */
@@ -53,6 +54,7 @@
     if (tab === 'rapidkl' && !state.rapidkl.loaded) loadSchedule('rapidkl');
     if (tab === 'ktmb' && !state.ktmb.loaded) loadSchedule('ktmb');
     if (tab === 'live') loadLive();
+    if (tab === 'lookup') ensureLookupLoaded();
   }
 
   /* -- generic state banner helpers -- */
@@ -125,7 +127,7 @@
   var SCHEDULE_CONFIG = {
     rapidkl: {
       endpoint: '/api/trains-prasarana',
-      cacheKey: 'mb-trains-rapidkl-v3',
+      cacheKey: 'mb-trains-rapidkl-v4',
       stateEl: 'rapidklState',
       contentEl: 'rapidklContent',
       routeListEl: 'rapidklRouteList',
@@ -139,7 +141,7 @@
     },
     ktmb: {
       endpoint: '/api/trains-ktmb',
-      cacheKey: 'mb-trains-ktmb-v3',
+      cacheKey: 'mb-trains-ktmb-v4',
       stateEl: 'ktmbState',
       contentEl: 'ktmbContent',
       routeListEl: 'ktmbRouteList',
@@ -196,6 +198,8 @@
     state[kind].stops = stops;
     state[kind].routeStops = (payload.routeStops && typeof payload.routeStops === 'object') ? payload.routeStops : {};
     state[kind].stopSchedule = (payload.stopSchedule && typeof payload.stopSchedule === 'object') ? payload.stopSchedule : {};
+    state[kind].trips = Array.isArray(payload.trips) ? payload.trips : [];
+    state[kind].tripStops = (payload.tripStops && typeof payload.tripStops === 'object') ? payload.tripStops : {};
     state[kind].selectedRouteId = null;
     state[kind].stopQuery = '';
     state[kind].expandedStopId = null;
@@ -211,6 +215,8 @@
     renderRouteList(kind);
     refreshStopList(kind);
     updateFilterNote(kind);
+
+    if (state.lookup.system === kind) renderLookup();
 
     wireSearch(cfg.routeSearchEl, function (q) { renderRouteList(kind, q); });
     wireSearch(cfg.stopSearchEl, function (q) {
@@ -420,6 +426,191 @@
     }).join('');
   }
 
+  /* -- train lookup (full journey for one specific train) -- */
+
+  function ensureLookupLoaded() {
+    var kind = state.lookup.system;
+    if (!state[kind].loaded) {
+      loadSchedule(kind); // applySchedule() calls renderLookup() once this lands
+      return;
+    }
+    renderLookup();
+  }
+
+  function tripsForRoute(kind, routeId) {
+    var s = state[kind];
+    return s.trips
+      .filter(function (t) { return t.route_id === routeId; })
+      .map(function (t) {
+        var stopTimes = s.tripStops[t.trip_id] || [];
+        return { trip: t, firstTime: stopTimes.length ? (stopTimes[0].departure_time || stopTimes[0].arrival_time || '') : '' };
+      })
+      .sort(function (a, b) { return (a.firstTime || '').localeCompare(b.firstTime || ''); });
+  }
+
+  function renderLookup() {
+    var kind = state.lookup.system;
+    var s = state[kind];
+    var stateEl = document.getElementById('lookupState');
+    var contentEl = document.getElementById('lookupContent');
+
+    if (!s.loaded) {
+      renderLoading('lookupState', 'Loading ' + (kind === 'ktmb' ? 'KTMB' : 'Rapid KL') + ' data...');
+      contentEl.hidden = true;
+      return;
+    }
+    if (!s.trips.length) {
+      renderInfo('lookupState', 'No per-train journey data available for this feed right now.');
+      contentEl.hidden = true;
+      return;
+    }
+
+    stateEl.innerHTML = '';
+    contentEl.hidden = false;
+
+    renderLookupRouteList();
+    renderLookupTripList();
+    renderLookupItinerary();
+  }
+
+  function renderLookupRouteList() {
+    var kind = state.lookup.system;
+    var s = state[kind];
+    var routeIdsWithTrips = {};
+    s.trips.forEach(function (t) { routeIdsWithTrips[t.route_id] = true; });
+    var routes = s.routes.filter(function (r) { return routeIdsWithTrips[r.route_id]; });
+    routes = filterRoutes(routes, state.lookup.routeQuery);
+
+    var el = document.getElementById('lookupRouteList');
+    if (!routes.length) {
+      el.innerHTML = '<li class="directory-empty">No matching lines.</li>';
+      return;
+    }
+    el.innerHTML = routes.slice(0, 300).map(function (r) {
+      var name = r.route_long_name || r.route_short_name || r.route_id || 'Unnamed route';
+      var badge = r.category || r.route_short_name || '';
+      var isSelected = state.lookup.selectedRouteId === r.route_id;
+      var cls = 'directory-item is-clickable' + (isSelected ? ' is-selected' : '');
+      return '<li class="' + cls + '" data-route-id="' + escapeHtml(r.route_id) + '" role="button" tabindex="0">' +
+        '<span class="item-title">' + escapeHtml(name) + (badge ? ' <span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</span>' +
+        '</li>';
+    }).join('');
+  }
+
+  function renderLookupTripList() {
+    var kind = state.lookup.system;
+    var el = document.getElementById('lookupTripList');
+    if (!state.lookup.selectedRouteId) {
+      el.innerHTML = '<li class="directory-empty">Pick a line to see its trains.</li>';
+      return;
+    }
+    var entries = tripsForRoute(kind, state.lookup.selectedRouteId);
+    if (!entries.length) {
+      el.innerHTML = '<li class="directory-empty">No trains found for this line.</li>';
+      return;
+    }
+    el.innerHTML = entries.map(function (entry) {
+      var t = entry.trip;
+      var isSelected = state.lookup.selectedTripId === t.trip_id;
+      var cls = 'directory-item is-clickable' + (isSelected ? ' is-selected' : '');
+      var title = entry.firstTime ? fmtScheduleTime(entry.firstTime) : 'Unknown start time';
+      return '<li class="' + cls + '" data-trip-id="' + escapeHtml(t.trip_id) + '" role="button" tabindex="0">' +
+        '<span class="item-title">' + escapeHtml(title) + '</span>' +
+        (t.trip_headsign ? '<span class="item-sub">To ' + escapeHtml(t.trip_headsign) + '</span>' : '') +
+        '</li>';
+    }).join('');
+  }
+
+  function renderLookupItinerary() {
+    var kind = state.lookup.system;
+    var s = state[kind];
+    var el = document.getElementById('lookupItinerary');
+    if (!state.lookup.selectedTripId) {
+      el.innerHTML = '<li class="directory-empty">Pick a train to see its full journey.</li>';
+      return;
+    }
+    var stopTimes = s.tripStops[state.lookup.selectedTripId] || [];
+    if (!stopTimes.length) {
+      el.innerHTML = '<li class="directory-empty">No stop times available for this train.</li>';
+      return;
+    }
+    el.innerHTML = stopTimes.map(function (st, idx) {
+      var stop = s.stops.find(function (x) { return x.stop_id === st.stop_id; });
+      var name = stop ? (stop.stop_name || st.stop_id) : st.stop_id;
+      var time = st.arrival_time || st.departure_time || '';
+      return '<li class="directory-item lookup-stop-row">' +
+        '<span class="lookup-stop-index">' + (idx + 1) + '</span>' +
+        '<span class="item-title lookup-stop-name">' + escapeHtml(name) + '</span>' +
+        '<span class="time-chip">' + escapeHtml(fmtScheduleTime(time)) + '</span>' +
+        '</li>';
+    }).join('');
+  }
+
+  function selectLookupRoute(routeId) {
+    state.lookup.selectedRouteId = (state.lookup.selectedRouteId === routeId) ? null : routeId;
+    state.lookup.selectedTripId = null;
+    renderLookupRouteList();
+    renderLookupTripList();
+    renderLookupItinerary();
+  }
+
+  function selectLookupTrip(tripId) {
+    state.lookup.selectedTripId = (state.lookup.selectedTripId === tripId) ? null : tripId;
+    renderLookupTripList();
+    renderLookupItinerary();
+  }
+
+  function initLookup() {
+    document.querySelectorAll('[data-lookup-system]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var system = btn.dataset.lookupSystem;
+        if (system === state.lookup.system) return;
+        state.lookup.system = system;
+        state.lookup.selectedRouteId = null;
+        state.lookup.selectedTripId = null;
+        state.lookup.routeQuery = '';
+        var routeSearch = document.getElementById('lookupRouteSearch');
+        if (routeSearch) routeSearch.value = '';
+        document.querySelectorAll('[data-lookup-system]').forEach(function (b) {
+          var active = b === btn;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', String(active));
+        });
+        ensureLookupLoaded();
+      });
+    });
+
+    var routeSearch = document.getElementById('lookupRouteSearch');
+    if (routeSearch) {
+      routeSearch.addEventListener('input', function () {
+        state.lookup.routeQuery = routeSearch.value.trim().toLowerCase();
+        renderLookupRouteList();
+      });
+    }
+
+    var routeListEl = document.getElementById('lookupRouteList');
+    routeListEl.addEventListener('click', function (e) {
+      var item = e.target.closest('.directory-item[data-route-id]');
+      if (item) selectLookupRoute(item.getAttribute('data-route-id'));
+    });
+    routeListEl.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var item = e.target.closest('.directory-item[data-route-id]');
+      if (item) { e.preventDefault(); selectLookupRoute(item.getAttribute('data-route-id')); }
+    });
+
+    var tripListEl = document.getElementById('lookupTripList');
+    tripListEl.addEventListener('click', function (e) {
+      var item = e.target.closest('.directory-item[data-trip-id]');
+      if (item) selectLookupTrip(item.getAttribute('data-trip-id'));
+    });
+    tripListEl.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var item = e.target.closest('.directory-item[data-trip-id]');
+      if (item) { e.preventDefault(); selectLookupTrip(item.getAttribute('data-trip-id')); }
+    });
+  }
+
   /* -- live KTMB positions -- */
 
   var liveLastFetch = 0;
@@ -514,6 +705,7 @@
     paintIcons(document);
     initTabs();
     initRetryButtons();
+    initLookup();
     loadSchedule('rapidkl');
   });
 })();

@@ -154,6 +154,7 @@ module.exports = async (req, res) => {
 
     const routeStopSets = {};
     const stopScheduleSets = {}; // stop_id -> route_id -> Set(HH:MM:SS)
+    const tripStopTimesMap = {}; // trip_id -> [{stop_id, stop_sequence, arrival_time, departure_time}]
     stopTimes.forEach(st => {
       const routeId = tripRoute[st.trip_id];
       if (!routeId || !st.stop_id) return;
@@ -165,6 +166,14 @@ module.exports = async (req, res) => {
       if (!stopScheduleSets[st.stop_id]) stopScheduleSets[st.stop_id] = {};
       if (!stopScheduleSets[st.stop_id][routeId]) stopScheduleSets[st.stop_id][routeId] = new Set();
       stopScheduleSets[st.stop_id][routeId].add(time);
+
+      if (!tripStopTimesMap[st.trip_id]) tripStopTimesMap[st.trip_id] = [];
+      tripStopTimesMap[st.trip_id].push({
+        stop_id: st.stop_id,
+        stop_sequence: Number(st.stop_sequence) || 0,
+        arrival_time: st.arrival_time || '',
+        departure_time: st.departure_time || ''
+      });
     });
     const routeStops = {};
     Object.keys(routeStopSets).forEach(id => { routeStops[id] = Array.from(routeStopSets[id]); });
@@ -177,6 +186,20 @@ module.exports = async (req, res) => {
       });
     });
 
+    const tripStops = {};
+    Object.keys(tripStopTimesMap).forEach(tripId => {
+      tripStops[tripId] = tripStopTimesMap[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
+    });
+
+    const tripsOut = trips
+      .filter(t => t.trip_id && tripStops[t.trip_id] && tripStops[t.trip_id].length)
+      .map(t => ({
+        trip_id: t.trip_id,
+        route_id: t.route_id,
+        trip_headsign: t.trip_headsign || '',
+        direction_id: t.direction_id || ''
+      }));
+
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800');
     res.status(200).json({
       success: true,
@@ -186,7 +209,9 @@ module.exports = async (req, res) => {
       routes,
       stops,
       routeStops,
-      stopSchedule
+      stopSchedule,
+      trips: tripsOut,
+      tripStops
     });
   } catch (err) {
     const isAbort = err && err.name === 'AbortError';

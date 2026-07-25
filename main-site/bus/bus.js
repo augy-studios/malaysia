@@ -86,7 +86,7 @@
   const STATIC_FEEDS = {
     prasarana: {
       endpoint: (category) => `/api/bus-prasarana?category=${encodeURIComponent(category)}`,
-      cacheKey: (category) => `bus-static-prasarana-${category}-v3`,
+      cacheKey: (category) => `bus-static-prasarana-${category}-v4`,
       stateEl: "prasaranaState",
       contentEl: "prasaranaContent",
       routeListEl: "prasaranaRouteList",
@@ -97,10 +97,16 @@
       filterNameEl: "prasaranaRouteFilterName",
       filterClearEl: "prasaranaRouteFilterClear",
       loadingLabel: "Loading Rapid Bus routes and stops...",
+      lookupStateEl: "prasaranaLookupState",
+      lookupContentEl: "prasaranaLookupContent",
+      lookupRouteListEl: "prasaranaLookupRouteList",
+      lookupTripListEl: "prasaranaLookupTripList",
+      lookupItineraryEl: "prasaranaLookupItinerary",
+      lookupRouteSearchEl: "prasaranaLookupRouteSearch",
     },
     mybas: {
       endpoint: () => "/api/bus-mybas-johor",
-      cacheKey: () => "bus-static-mybas-johor-v3",
+      cacheKey: () => "bus-static-mybas-johor-v4",
       stateEl: "mybasState",
       contentEl: "mybasContent",
       routeListEl: "mybasRouteList",
@@ -111,12 +117,18 @@
       filterNameEl: "mybasRouteFilterName",
       filterClearEl: "mybasRouteFilterClear",
       loadingLabel: "Loading myBAS Johor routes and stops...",
+      lookupStateEl: "mybasLookupState",
+      lookupContentEl: "mybasLookupContent",
+      lookupRouteListEl: "mybasLookupRouteList",
+      lookupTripListEl: "mybasLookupTripList",
+      lookupItineraryEl: "mybasLookupItinerary",
+      lookupRouteSearchEl: "mybasLookupRouteSearch",
     },
   };
 
   const feedState = {
-    prasarana: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null },
-    mybas: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null },
+    prasarana: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, trips: [], tripStops: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null, lookupRouteQuery: "", lookupSelectedRouteId: null, lookupSelectedTripId: null },
+    mybas: { routes: [], stops: [], routeStops: {}, stopSchedule: {}, trips: [], tripStops: {}, selectedRouteId: null, stopQuery: "", expandedStopId: null, lookupRouteQuery: "", lookupSelectedRouteId: null, lookupSelectedTripId: null },
   };
 
   function readStaticCache(key) {
@@ -317,13 +329,21 @@
     feedState[kind].stops = stops;
     feedState[kind].routeStops = (payload.routeStops && typeof payload.routeStops === "object") ? payload.routeStops : {};
     feedState[kind].stopSchedule = (payload.stopSchedule && typeof payload.stopSchedule === "object") ? payload.stopSchedule : {};
+    feedState[kind].trips = Array.isArray(payload.trips) ? payload.trips : [];
+    feedState[kind].tripStops = (payload.tripStops && typeof payload.tripStops === "object") ? payload.tripStops : {};
     feedState[kind].selectedRouteId = null;
     feedState[kind].stopQuery = "";
     feedState[kind].expandedStopId = null;
+    feedState[kind].lookupRouteQuery = "";
+    feedState[kind].lookupSelectedRouteId = null;
+    feedState[kind].lookupSelectedTripId = null;
+    const lookupRouteSearchInput = document.getElementById(cfg.lookupRouteSearchEl);
+    if (lookupRouteSearchInput) lookupRouteSearchInput.value = "";
 
     if (!routes.length && !stops.length) {
       contentEl.hidden = true;
       renderInfo(stateEl, "The upstream feed returned no route or stop data right now.");
+      renderLookup(kind);
       return;
     }
 
@@ -376,6 +396,174 @@
           e.preventDefault();
           toggleStopSchedule(kind, item.getAttribute("data-stop-id"));
         }
+      });
+    }
+
+    wireLookup(kind);
+    renderLookup(kind);
+  }
+
+  // ---------------------------------------------------------------------
+  // Trip lookup (full stop-by-stop journey for one specific bus)
+  // ---------------------------------------------------------------------
+
+  function tripsForRoute(kind, routeId) {
+    const s = feedState[kind];
+    return s.trips
+      .filter((t) => t.route_id === routeId)
+      .map((t) => {
+        const stopTimes = s.tripStops[t.trip_id] || [];
+        return { trip: t, firstTime: stopTimes.length ? (stopTimes[0].departure_time || stopTimes[0].arrival_time || "") : "" };
+      })
+      .sort((a, b) => (a.firstTime || "").localeCompare(b.firstTime || ""));
+  }
+
+  function renderLookup(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const stateEl = document.getElementById(cfg.lookupStateEl);
+    const contentEl = document.getElementById(cfg.lookupContentEl);
+    if (!stateEl || !contentEl) return;
+
+    if (!s.trips.length) {
+      contentEl.hidden = true;
+      renderInfo(stateEl, "No per-bus trip data available for this feed right now.");
+      return;
+    }
+
+    stateEl.innerHTML = "";
+    contentEl.hidden = false;
+    renderLookupRouteList(kind);
+    renderLookupTripList(kind);
+    renderLookupItinerary(kind);
+  }
+
+  function renderLookupRouteList(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const routeIdsWithTrips = {};
+    s.trips.forEach((t) => { routeIdsWithTrips[t.route_id] = true; });
+    let routes = s.routes.filter((r) => routeIdsWithTrips[r.route_id]);
+    routes = filterRoutes(routes, s.lookupRouteQuery);
+
+    const el = document.getElementById(cfg.lookupRouteListEl);
+    if (!routes.length) {
+      el.innerHTML = '<li class="directory-empty">No matching routes.</li>';
+      return;
+    }
+    el.innerHTML = routes.slice(0, 300).map((r) => {
+      const name = r.route_long_name || r.route_short_name || r.route_id || "Unnamed route";
+      const badge = CATEGORY_LABELS[r.category] || r.category || r.route_short_name || "";
+      const isSelected = s.lookupSelectedRouteId === r.route_id;
+      const cls = "directory-item is-clickable" + (isSelected ? " is-selected" : "");
+      return `<li class="${cls}" data-route-id="${escapeHtml(r.route_id)}" role="button" tabindex="0">` +
+        `<span class="item-title">${escapeHtml(name)}${badge ? ` <span class="badge">${escapeHtml(badge)}</span>` : ""}</span>` +
+        `</li>`;
+    }).join("");
+  }
+
+  function renderLookupTripList(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const el = document.getElementById(cfg.lookupTripListEl);
+    if (!s.lookupSelectedRouteId) {
+      el.innerHTML = '<li class="directory-empty">Pick a route to see its buses.</li>';
+      return;
+    }
+    const entries = tripsForRoute(kind, s.lookupSelectedRouteId);
+    if (!entries.length) {
+      el.innerHTML = '<li class="directory-empty">No buses found for this route.</li>';
+      return;
+    }
+    el.innerHTML = entries.map(({ trip: t, firstTime }) => {
+      const isSelected = s.lookupSelectedTripId === t.trip_id;
+      const cls = "directory-item is-clickable" + (isSelected ? " is-selected" : "");
+      const title = firstTime ? fmtScheduleTime(firstTime) : "Unknown start time";
+      return `<li class="${cls}" data-trip-id="${escapeHtml(t.trip_id)}" role="button" tabindex="0">` +
+        `<span class="item-title">${escapeHtml(title)}</span>` +
+        `${t.trip_headsign ? `<span class="item-sub">To ${escapeHtml(t.trip_headsign)}</span>` : ""}` +
+        `</li>`;
+    }).join("");
+  }
+
+  function renderLookupItinerary(kind) {
+    const cfg = STATIC_FEEDS[kind];
+    const s = feedState[kind];
+    const el = document.getElementById(cfg.lookupItineraryEl);
+    if (!s.lookupSelectedTripId) {
+      el.innerHTML = '<li class="directory-empty">Pick a bus to see its full trip.</li>';
+      return;
+    }
+    const stopTimes = s.tripStops[s.lookupSelectedTripId] || [];
+    if (!stopTimes.length) {
+      el.innerHTML = '<li class="directory-empty">No stop times available for this bus.</li>';
+      return;
+    }
+    el.innerHTML = stopTimes.map((st, idx) => {
+      const stop = s.stops.find((x) => x.stop_id === st.stop_id);
+      const name = stop ? (stop.stop_name || st.stop_id) : st.stop_id;
+      const time = st.arrival_time || st.departure_time || "";
+      return `<li class="directory-item lookup-stop-row">` +
+        `<span class="lookup-stop-index">${idx + 1}</span>` +
+        `<span class="item-title lookup-stop-name">${escapeHtml(name)}</span>` +
+        `<span class="time-chip">${escapeHtml(fmtScheduleTime(time))}</span>` +
+        `</li>`;
+    }).join("");
+  }
+
+  function selectLookupRoute(kind, routeId) {
+    const s = feedState[kind];
+    s.lookupSelectedRouteId = (s.lookupSelectedRouteId === routeId) ? null : routeId;
+    s.lookupSelectedTripId = null;
+    renderLookupRouteList(kind);
+    renderLookupTripList(kind);
+    renderLookupItinerary(kind);
+  }
+
+  function selectLookupTrip(kind, tripId) {
+    const s = feedState[kind];
+    s.lookupSelectedTripId = (s.lookupSelectedTripId === tripId) ? null : tripId;
+    renderLookupTripList(kind);
+    renderLookupItinerary(kind);
+  }
+
+  function wireLookup(kind) {
+    const cfg = STATIC_FEEDS[kind];
+
+    const routeSearch = document.getElementById(cfg.lookupRouteSearchEl);
+    if (routeSearch && !routeSearch.dataset.wired) {
+      routeSearch.dataset.wired = "1";
+      routeSearch.addEventListener("input", () => {
+        feedState[kind].lookupRouteQuery = routeSearch.value.trim().toLowerCase();
+        renderLookupRouteList(kind);
+      });
+    }
+
+    const routeListEl = document.getElementById(cfg.lookupRouteListEl);
+    if (routeListEl && !routeListEl.dataset.clickWired) {
+      routeListEl.dataset.clickWired = "1";
+      routeListEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".directory-item[data-route-id]");
+        if (item) selectLookupRoute(kind, item.getAttribute("data-route-id"));
+      });
+      routeListEl.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const item = e.target.closest(".directory-item[data-route-id]");
+        if (item) { e.preventDefault(); selectLookupRoute(kind, item.getAttribute("data-route-id")); }
+      });
+    }
+
+    const tripListEl = document.getElementById(cfg.lookupTripListEl);
+    if (tripListEl && !tripListEl.dataset.clickWired) {
+      tripListEl.dataset.clickWired = "1";
+      tripListEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".directory-item[data-trip-id]");
+        if (item) selectLookupTrip(kind, item.getAttribute("data-trip-id"));
+      });
+      tripListEl.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const item = e.target.closest(".directory-item[data-trip-id]");
+        if (item) { e.preventDefault(); selectLookupTrip(kind, item.getAttribute("data-trip-id")); }
       });
     }
   }
