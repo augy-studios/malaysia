@@ -55,11 +55,11 @@
     if (tab === 'ktmb' && !state.ktmb.loaded) loadSchedule('ktmb');
     if (tab === 'live') {
       loadLive();
-      // Leaflet needs the container visible with real dimensions before it can size itself.
-      requestAnimationFrame(function () {
-        var map = ensureLiveMap();
-        if (map) map.invalidateSize();
-      });
+      // If the map already exists and its container is already visible (e.g. a
+      // repeat visit to this tab), make sure its size is current.
+      if (liveMap && !document.getElementById('liveContent').hidden) {
+        requestAnimationFrame(function () { liveMap.invalidateSize(); });
+      }
     }
     if (tab === 'lookup') ensureLookupLoaded();
   }
@@ -722,6 +722,10 @@
 
         clearState('liveState');
         document.getElementById('liveContent').hidden = false;
+        // The container is only guaranteed a real size once it's unhidden, so
+        // (re)create/resize the map here rather than earlier on tab switch.
+        var map = ensureLiveMap();
+        if (map) map.invalidateSize();
         renderLiveTable(vehicles);
       })
       .catch(function () {
