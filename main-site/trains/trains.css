@@ -342,6 +342,24 @@
   flex: 1 1 auto;
 }
 
+/* -- Live positions map (Leaflet) -- */
+
+.live-map {
+  height: 360px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.live-map .leaflet-popup-content-wrapper,
+.live-map .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--ink);
+}
+
 /* -- Live positions table -- */
 
 .live-table-wrap {
@@ -383,6 +401,19 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.live-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.live-table tr.is-clickable:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.live-table tr.is-clickable:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: -2px;
 }
 
 @media (max-width: 560px) {

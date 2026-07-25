@@ -53,7 +53,14 @@
   function ensureLoaded(tab) {
     if (tab === 'rapidkl' && !state.rapidkl.loaded) loadSchedule('rapidkl');
     if (tab === 'ktmb' && !state.ktmb.loaded) loadSchedule('ktmb');
-    if (tab === 'live') loadLive();
+    if (tab === 'live') {
+      loadLive();
+      // Leaflet needs the container visible with real dimensions before it can size itself.
+      requestAnimationFrame(function () {
+        var map = ensureLiveMap();
+        if (map) map.invalidateSize();
+      });
+    }
     if (tab === 'lookup') ensureLookupLoaded();
   }
 
@@ -443,9 +450,21 @@
       .filter(function (t) { return t.route_id === routeId; })
       .map(function (t) {
         var stopTimes = s.tripStops[t.trip_id] || [];
-        return { trip: t, firstTime: stopTimes.length ? (stopTimes[0].departure_time || stopTimes[0].arrival_time || '') : '' };
+        var first = stopTimes[0];
+        var last = stopTimes[stopTimes.length - 1];
+        return {
+          trip: t,
+          firstTime: first ? (first.departure_time || first.arrival_time || '') : '',
+          firstStopId: first ? first.stop_id : null,
+          lastStopId: last ? last.stop_id : null
+        };
       })
       .sort(function (a, b) { return (a.firstTime || '').localeCompare(b.firstTime || ''); });
+  }
+
+  function lookupStopName(kind, stopId) {
+    var stop = state[kind].stops.find(function (x) { return x.stop_id === stopId; });
+    return stop ? (stop.stop_name || stopId) : stopId;
   }
 
   function renderLookup() {
@@ -514,9 +533,12 @@
       var isSelected = state.lookup.selectedTripId === t.trip_id;
       var cls = 'directory-item is-clickable' + (isSelected ? ' is-selected' : '');
       var title = entry.firstTime ? fmtScheduleTime(entry.firstTime) : 'Unknown start time';
+      var startName = entry.firstStopId ? lookupStopName(kind, entry.firstStopId) : '';
+      var endName = entry.lastStopId ? lookupStopName(kind, entry.lastStopId) : '';
+      var sub = (startName && endName) ? (startName + ' → ' + endName) : (t.trip_headsign ? 'To ' + t.trip_headsign : '');
       return '<li class="' + cls + '" data-trip-id="' + escapeHtml(t.trip_id) + '" role="button" tabindex="0">' +
         '<span class="item-title">' + escapeHtml(title) + '</span>' +
-        (t.trip_headsign ? '<span class="item-sub">To ' + escapeHtml(t.trip_headsign) + '</span>' : '') +
+        (sub ? '<span class="item-sub">' + escapeHtml(sub) + '</span>' : '') +
         '</li>';
     }).join('');
   }
@@ -614,6 +636,57 @@
   /* -- live KTMB positions -- */
 
   var liveLastFetch = 0;
+  var liveMap = null;
+  var liveMarkersLayer = null;
+  var liveMarkers = [];
+  var MALAYSIA_CENTER = [4.2, 108.0];
+
+  function ensureLiveMap() {
+    if (liveMap || typeof L === 'undefined') return liveMap;
+    liveMap = L.map('liveMap', { scrollWheelZoom: false }).setView(MALAYSIA_CENTER, 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(liveMap);
+    liveMarkersLayer = L.layerGroup().addTo(liveMap);
+    return liveMap;
+  }
+
+  function updateLiveMapMarkers(sortedVehicles) {
+    var map = ensureLiveMap();
+    if (!map) return;
+
+    liveMarkersLayer.clearLayers();
+    liveMarkers = [];
+
+    sortedVehicles.forEach(function (v, idx) {
+      if (typeof v.lat !== 'number' || typeof v.lon !== 'number' || isNaN(v.lat) || isNaN(v.lon)) {
+        liveMarkers[idx] = null;
+        return;
+      }
+      var label = v.label || v.vehicleId || v.entityId || 'Unknown vehicle';
+      var routeLine = [v.routeId, v.tripId].filter(Boolean).join(' / ') || 'Unknown route';
+      var marker = L.marker([v.lat, v.lon]).addTo(liveMarkersLayer);
+      marker.bindPopup('<strong>' + escapeHtml(label) + '</strong><br>' + escapeHtml(routeLine));
+      liveMarkers[idx] = marker;
+    });
+
+    var validMarkers = liveMarkers.filter(Boolean);
+    if (validMarkers.length) {
+      var bounds = L.latLngBounds(validMarkers.map(function (m) { return m.getLatLng(); }));
+      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+    } else {
+      map.setView(MALAYSIA_CENTER, 6);
+    }
+  }
+
+  function focusVehicleOnMap(idx) {
+    var map = ensureLiveMap();
+    var marker = liveMarkers[idx];
+    if (!map || !marker) return;
+    map.setView(marker.getLatLng(), 15);
+    marker.openPopup();
+  }
 
   function loadLive(force) {
     var now = Date.now();
@@ -670,13 +743,18 @@
     var sorted = vehicles.slice().sort(function (a, b) {
       return (b.timestamp || 0) - (a.timestamp || 0);
     });
+
+    updateLiveMapMarkers(sorted);
+
     var body = document.getElementById('liveTableBody');
-    body.innerHTML = sorted.map(function (v) {
+    body.innerHTML = sorted.map(function (v, idx) {
       var label = v.label || v.vehicleId || v.entityId || 'Unknown vehicle';
       var routeLine = [v.routeId, v.tripId].filter(Boolean).join(' / ') || '-';
+      var hasCoords = typeof v.lat === 'number' && typeof v.lon === 'number' && !isNaN(v.lat) && !isNaN(v.lon);
       var mapUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(v.lat) + ',' + encodeURIComponent(v.lon);
       var updated = v.timestamp ? formatTime(new Date(v.timestamp * 1000).toISOString()) : '-';
-      return '<tr>' +
+      var rowAttrs = hasCoords ? ' class="is-clickable" data-vehicle-idx="' + idx + '" tabindex="0"' : '';
+      return '<tr' + rowAttrs + '>' +
         '<td><span data-icon="mapPin"></span></td>' +
         '<td>' + escapeHtml(label) + '</td>' +
         '<td>' + escapeHtml(routeLine) + '</td>' +
@@ -687,6 +765,18 @@
         '</tr>';
     }).join('');
     paintIcons(body);
+
+    body.querySelectorAll('tr[data-vehicle-idx]').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('a')) return; // let the "open in Google Maps" link work normally
+        focusVehicleOnMap(Number(row.getAttribute('data-vehicle-idx')));
+      });
+      row.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        focusVehicleOnMap(Number(row.getAttribute('data-vehicle-idx')));
+      });
+    });
   }
 
   /* -- retry buttons in section headers -- */

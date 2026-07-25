@@ -609,12 +609,10 @@
   }
 
   const VEHICLE_PAGE_SIZE = 5;
-  const rtState = {
-    prasarana: { vehicles: [], page: 1 },
-    mybas: { vehicles: [], page: 1 },
-  };
+  const LIVE_CATEGORIES = ["rapid-bus-kl", "rapid-bus-penang", "rapid-bus-mrtfeeder", "mybas-johor"];
+  const liveState = { vehicles: [], page: 1, category: "rapid-bus-kl" };
 
-  function vehicleRowHtml(v) {
+  function vehicleRowHtml(v, idx) {
     const routeId = (v.trip && v.trip.routeId) || "Unknown route";
     const vehicleId = (v.vehicle && (v.vehicle.label || v.vehicle.id)) || v.entityId || "Unknown vehicle";
     const lat = v.position && v.position.latitude;
@@ -623,8 +621,9 @@
     const tsMs = vehicleTimestampMs(v);
     const timeLabel = tsMs ? formatTimeAgo(new Date(tsMs)) : "Unknown";
     const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${lat},${lon}` : null;
+    const rowAttrs = hasCoords ? ` data-vehicle-idx="${idx}" role="button" tabindex="0"` : "";
 
-    return `<div class="bus-vehicle-row">
+    return `<div class="bus-vehicle-row${hasCoords ? " is-clickable" : ""}"${rowAttrs}>
         <span class="bus-vehicle-icon" data-icon="mapPin"></span>
         <span class="bus-vehicle-main">
           <span class="bus-vehicle-route">${escapeHtml(routeId)} &middot; ${escapeHtml(vehicleId)}</span>
@@ -637,18 +636,18 @@
       </div>`;
   }
 
-  function renderVehiclePage(kind, container) {
-    const s = rtState[kind];
-    const totalPages = Math.max(1, Math.ceil(s.vehicles.length / VEHICLE_PAGE_SIZE));
-    s.page = Math.min(Math.max(1, s.page), totalPages);
-    const start = (s.page - 1) * VEHICLE_PAGE_SIZE;
-    const rows = s.vehicles.slice(start, start + VEHICLE_PAGE_SIZE).map(vehicleRowHtml).join("");
+  function renderVehiclePage(container) {
+    const totalPages = Math.max(1, Math.ceil(liveState.vehicles.length / VEHICLE_PAGE_SIZE));
+    liveState.page = Math.min(Math.max(1, liveState.page), totalPages);
+    const start = (liveState.page - 1) * VEHICLE_PAGE_SIZE;
+    const pageVehicles = liveState.vehicles.slice(start, start + VEHICLE_PAGE_SIZE);
+    const rows = pageVehicles.map((v, i) => vehicleRowHtml(v, start + i)).join("");
 
-    const pagerHtml = s.vehicles.length > VEHICLE_PAGE_SIZE ? `
+    const pagerHtml = liveState.vehicles.length > VEHICLE_PAGE_SIZE ? `
       <div class="bus-vehicle-pager">
-        <button class="btn btn-small" type="button" data-vehicle-page="prev"${s.page <= 1 ? " disabled" : ""}>${iconEl("chevronLeft", 14)}<span>Prev</span></button>
-        <span class="bus-vehicle-pager-label">Page ${s.page} of ${totalPages}</span>
-        <button class="btn btn-small" type="button" data-vehicle-page="next"${s.page >= totalPages ? " disabled" : ""}>${iconEl("chevronRight", 14)}<span>Next</span></button>
+        <button class="btn btn-small" type="button" data-vehicle-page="prev"${liveState.page <= 1 ? " disabled" : ""}>${iconEl("chevronLeft", 14)}<span>Prev</span></button>
+        <span class="bus-vehicle-pager-label">Page ${liveState.page} of ${totalPages}</span>
+        <button class="btn btn-small" type="button" data-vehicle-page="next"${liveState.page >= totalPages ? " disabled" : ""}>${iconEl("chevronRight", 14)}<span>Next</span></button>
       </div>` : "";
 
     container.innerHTML = `<div class="bus-vehicle-list">${rows}</div>${pagerHtml}`;
@@ -656,57 +655,109 @@
 
     const prevBtn = container.querySelector('[data-vehicle-page="prev"]');
     const nextBtn = container.querySelector('[data-vehicle-page="next"]');
-    if (prevBtn) prevBtn.addEventListener("click", () => { s.page -= 1; renderVehiclePage(kind, container); });
-    if (nextBtn) nextBtn.addEventListener("click", () => { s.page += 1; renderVehiclePage(kind, container); });
+    if (prevBtn) prevBtn.addEventListener("click", () => { liveState.page -= 1; renderVehiclePage(container); });
+    if (nextBtn) nextBtn.addEventListener("click", () => { liveState.page += 1; renderVehiclePage(container); });
+
+    container.querySelectorAll(".bus-vehicle-row[data-vehicle-idx]").forEach((row) => {
+      row.addEventListener("click", () => focusVehicleOnMap(Number(row.getAttribute("data-vehicle-idx"))));
+      row.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        focusVehicleOnMap(Number(row.getAttribute("data-vehicle-idx")));
+      });
+    });
   }
 
-  function renderVehicles(kind, container, vehicles) {
+  function renderVehicles(container, vehicles) {
     if (!Array.isArray(vehicles) || vehicles.length === 0) {
-      rtState[kind].vehicles = [];
+      liveState.vehicles = [];
       container.innerHTML = infoBanner("No live positions currently reported for this feed.");
       return;
     }
 
-    rtState[kind].vehicles = vehicles.slice().sort((a, b) => vehicleTimestampMs(b) - vehicleTimestampMs(a));
-    rtState[kind].page = 1;
-    renderVehiclePage(kind, container);
+    liveState.vehicles = vehicles.slice().sort((a, b) => vehicleTimestampMs(b) - vehicleTimestampMs(a));
+    liveState.page = 1;
+    renderVehiclePage(container);
   }
 
-  async function loadPrasaranaRealtime(category) {
-    const container = document.getElementById("prasaranaRtBody");
-    const updatedEl = document.getElementById("prasaranaRtUpdated");
-    const refreshBtn = document.getElementById("prasaranaRtRefresh");
-    container.innerHTML = loadingHtml("Loading live positions...");
-    if (refreshBtn) refreshBtn.classList.add("is-loading");
-    try {
-      const payload = await fetchJson(`/api/bus-prasarana-realtime?category=${encodeURIComponent(category)}`);
-      renderVehicles("prasarana", container, payload.data && payload.data.vehicles);
-      if (updatedEl) updatedEl.textContent = `Last updated ${new Date(payload.fetchedAt || Date.now()).toLocaleTimeString()}`;
-    } catch (err) {
-      container.innerHTML = errorBanner(err.message || "Could not load live positions.", "prasaranaRtRetry");
-      hydrateIcons(container);
-      const btn = document.getElementById("prasaranaRtRetry");
-      if (btn) btn.addEventListener("click", () => loadPrasaranaRealtime(category));
-    } finally {
-      if (refreshBtn) refreshBtn.classList.remove("is-loading");
+  // ---------------------------------------------------------------------
+  // Leaflet map of live vehicle positions
+  // ---------------------------------------------------------------------
+
+  let liveMap = null;
+  let liveMarkersLayer = null;
+  let liveMarkers = [];
+  const MALAYSIA_CENTER = [4.2, 108.0];
+
+  function ensureLiveMap() {
+    if (liveMap || typeof L === "undefined") return liveMap;
+    liveMap = L.map("liveMap", { scrollWheelZoom: false }).setView(MALAYSIA_CENTER, 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+    }).addTo(liveMap);
+    liveMarkersLayer = L.layerGroup().addTo(liveMap);
+    return liveMap;
+  }
+
+  function updateLiveMapMarkers() {
+    const map = ensureLiveMap();
+    if (!map) return;
+
+    liveMarkersLayer.clearLayers();
+    liveMarkers = [];
+
+    liveState.vehicles.forEach((v, idx) => {
+      const lat = v.position && v.position.latitude;
+      const lon = v.position && v.position.longitude;
+      if (typeof lat !== "number" || typeof lon !== "number" || Number.isNaN(lat) || Number.isNaN(lon)) {
+        liveMarkers[idx] = null;
+        return;
+      }
+      const routeId = (v.trip && v.trip.routeId) || "Unknown route";
+      const vehicleId = (v.vehicle && (v.vehicle.label || v.vehicle.id)) || v.entityId || "Unknown vehicle";
+      const marker = L.marker([lat, lon]).addTo(liveMarkersLayer);
+      marker.bindPopup(`<strong>${escapeHtml(routeId)}</strong><br>${escapeHtml(vehicleId)}`);
+      liveMarkers[idx] = marker;
+    });
+
+    const validMarkers = liveMarkers.filter(Boolean);
+    if (validMarkers.length) {
+      const bounds = L.latLngBounds(validMarkers.map((m) => m.getLatLng()));
+      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+    } else {
+      map.setView(MALAYSIA_CENTER, 6);
     }
   }
 
-  async function loadMybasRealtime() {
-    const container = document.getElementById("mybasRtBody");
-    const updatedEl = document.getElementById("mybasRtUpdated");
-    const refreshBtn = document.getElementById("mybasRtRefresh");
+  function focusVehicleOnMap(idx) {
+    const map = ensureLiveMap();
+    const marker = liveMarkers[idx];
+    if (!map || !marker) return;
+    map.setView(marker.getLatLng(), 15);
+    marker.openPopup();
+  }
+
+  async function loadLiveRealtime(category) {
+    const container = document.getElementById("liveRtBody");
+    const updatedEl = document.getElementById("liveRtUpdated");
+    const refreshBtn = document.getElementById("liveRtRefresh");
     container.innerHTML = loadingHtml("Loading live positions...");
     if (refreshBtn) refreshBtn.classList.add("is-loading");
+    const endpoint = category === "mybas-johor"
+      ? "/api/bus-mybas-johor-realtime"
+      : `/api/bus-prasarana-realtime?category=${encodeURIComponent(category)}`;
     try {
-      const payload = await fetchJson("/api/bus-mybas-johor-realtime");
-      renderVehicles("mybas", container, payload.data && payload.data.vehicles);
+      const payload = await fetchJson(endpoint);
+      const vehicles = payload.data && payload.data.vehicles;
+      renderVehicles(container, vehicles);
+      updateLiveMapMarkers();
       if (updatedEl) updatedEl.textContent = `Last updated ${new Date(payload.fetchedAt || Date.now()).toLocaleTimeString()}`;
     } catch (err) {
-      container.innerHTML = errorBanner(err.message || "Could not load live positions.", "mybasRtRetry");
+      container.innerHTML = errorBanner(err.message || "Could not load live positions.", "liveRtRetry");
       hydrateIcons(container);
-      const btn = document.getElementById("mybasRtRetry");
-      if (btn) btn.addEventListener("click", loadMybasRealtime);
+      const btn = document.getElementById("liveRtRetry");
+      if (btn) btn.addEventListener("click", () => loadLiveRealtime(category));
     } finally {
       if (refreshBtn) refreshBtn.classList.remove("is-loading");
     }
@@ -717,16 +768,22 @@
   // ---------------------------------------------------------------------
 
   function selectTab(which) {
-    const tabPrasarana = document.getElementById("tabPrasarana");
-    const tabMybas = document.getElementById("tabMybas");
-    const panelPrasarana = document.getElementById("panelPrasarana");
-    const panelMybas = document.getElementById("panelMybas");
+    const tabs = { prasarana: "tabPrasarana", mybas: "tabMybas", live: "tabLive" };
+    const panels = { prasarana: "panelPrasarana", mybas: "panelMybas", live: "panelLive" };
 
-    const isPrasarana = which === "prasarana";
-    tabPrasarana.setAttribute("aria-selected", String(isPrasarana));
-    tabMybas.setAttribute("aria-selected", String(!isPrasarana));
-    panelPrasarana.hidden = !isPrasarana;
-    panelMybas.hidden = isPrasarana;
+    Object.keys(tabs).forEach((key) => {
+      const isActive = key === which;
+      document.getElementById(tabs[key]).setAttribute("aria-selected", String(isActive));
+      document.getElementById(panels[key]).hidden = !isActive;
+    });
+
+    if (which === "live") {
+      // Leaflet needs the container visible with real dimensions before it can size itself.
+      requestAnimationFrame(() => {
+        const map = ensureLiveMap();
+        if (map) map.invalidateSize();
+      });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -734,9 +791,12 @@
 
     const tabPrasarana = document.getElementById("tabPrasarana");
     const tabMybas = document.getElementById("tabMybas");
+    const tabLive = document.getElementById("tabLive");
     const categorySelect = document.getElementById("prasaranaCategory");
+    const liveCategorySelect = document.getElementById("liveCategory");
 
     let mybasLoaded = false;
+    let liveLoaded = false;
 
     tabPrasarana.addEventListener("click", () => selectTab("prasarana"));
     tabMybas.addEventListener("click", () => {
@@ -744,14 +804,24 @@
       if (!mybasLoaded) {
         mybasLoaded = true;
         loadStaticFeed("mybas", null);
-        loadMybasRealtime();
+      }
+    });
+    tabLive.addEventListener("click", () => {
+      selectTab("live");
+      if (!liveLoaded) {
+        liveLoaded = true;
+        loadLiveRealtime(liveState.category);
       }
     });
 
     categorySelect.addEventListener("change", () => {
       const category = PRASARANA_CATEGORIES.includes(categorySelect.value) ? categorySelect.value : "rapid-bus-kl";
       loadStaticFeed("prasarana", category);
-      loadPrasaranaRealtime(category);
+    });
+
+    liveCategorySelect.addEventListener("change", () => {
+      liveState.category = LIVE_CATEGORIES.includes(liveCategorySelect.value) ? liveCategorySelect.value : "rapid-bus-kl";
+      loadLiveRealtime(liveState.category);
     });
 
     document.getElementById("prasaranaStaticRefresh").addEventListener("click", () => {
@@ -760,13 +830,12 @@
     document.getElementById("mybasStaticRefresh").addEventListener("click", () => {
       loadStaticFeed("mybas", null, true);
     });
-    document.getElementById("prasaranaRtRefresh").addEventListener("click", () => {
-      loadPrasaranaRealtime(categorySelect.value || "rapid-bus-kl");
+    document.getElementById("liveRtRefresh").addEventListener("click", () => {
+      loadLiveRealtime(liveState.category);
     });
-    document.getElementById("mybasRtRefresh").addEventListener("click", loadMybasRealtime);
 
-    // Initial load: Rapid Bus tab, default category.
+    // Initial load: Rapid Bus tab, default category. Live positions and myBAS
+    // load lazily on first tab visit to avoid unnecessary requests/work.
     loadStaticFeed("prasarana", "rapid-bus-kl");
-    loadPrasaranaRealtime("rapid-bus-kl");
   });
 })();

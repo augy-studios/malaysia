@@ -351,6 +351,24 @@
   flex: 1 1 auto;
 }
 
+/* -- Live vehicle map (Leaflet) -- */
+
+.bus-live-map {
+  height: 360px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin: 14px 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bus-live-map .leaflet-popup-content-wrapper,
+.bus-live-map .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--ink);
+}
+
 /* -- Vehicle list -- */
 
 .bus-vehicle-list {
@@ -368,6 +386,19 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.35);
+}
+
+.bus-vehicle-row.is-clickable {
+  cursor: pointer;
+}
+
+.bus-vehicle-row.is-clickable:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.bus-vehicle-row.is-clickable:focus-visible {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: -2px;
 }
 
 .bus-vehicle-icon {
