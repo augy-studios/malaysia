@@ -608,39 +608,68 @@
     return Number.isFinite(num) ? num * 1000 : 0;
   }
 
-  function renderVehicles(container, vehicles) {
-    if (!Array.isArray(vehicles) || vehicles.length === 0) {
-      container.innerHTML = infoBanner("No live positions currently reported for this feed.");
-      return;
-    }
+  const VEHICLE_PAGE_SIZE = 5;
+  const rtState = {
+    prasarana: { vehicles: [], page: 1 },
+    mybas: { vehicles: [], page: 1 },
+  };
 
-    const sorted = vehicles.slice().sort((a, b) => vehicleTimestampMs(b) - vehicleTimestampMs(a));
+  function vehicleRowHtml(v) {
+    const routeId = (v.trip && v.trip.routeId) || "Unknown route";
+    const vehicleId = (v.vehicle && (v.vehicle.label || v.vehicle.id)) || v.entityId || "Unknown vehicle";
+    const lat = v.position && v.position.latitude;
+    const lon = v.position && v.position.longitude;
+    const hasCoords = typeof lat === "number" && typeof lon === "number" && !Number.isNaN(lat) && !Number.isNaN(lon);
+    const tsMs = vehicleTimestampMs(v);
+    const timeLabel = tsMs ? formatTimeAgo(new Date(tsMs)) : "Unknown";
+    const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${lat},${lon}` : null;
 
-    const rows = sorted.map((v) => {
-      const routeId = (v.trip && v.trip.routeId) || "Unknown route";
-      const vehicleId = (v.vehicle && (v.vehicle.label || v.vehicle.id)) || v.entityId || "Unknown vehicle";
-      const lat = v.position && v.position.latitude;
-      const lon = v.position && v.position.longitude;
-      const hasCoords = typeof lat === "number" && typeof lon === "number" && !Number.isNaN(lat) && !Number.isNaN(lon);
-      const tsMs = vehicleTimestampMs(v);
-      const timeLabel = tsMs ? formatTimeAgo(new Date(tsMs)) : "Unknown";
-      const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${lat},${lon}` : null;
-
-      return `<div class="bus-vehicle-row">
+    return `<div class="bus-vehicle-row">
         <span class="bus-vehicle-icon" data-icon="mapPin"></span>
         <span class="bus-vehicle-main">
           <span class="bus-vehicle-route">${escapeHtml(routeId)} &middot; ${escapeHtml(vehicleId)}</span>
           <span class="bus-vehicle-meta">${hasCoords
-          ? `${lat.toFixed(5)}, ${lon.toFixed(5)}${mapsUrl ? ` &middot; <a class="bus-vehicle-link" href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer">${iconEl("externalLink", 13)} Map</a>` : ""}`
-          : "Coordinates unavailable"
-        }</span>
+        ? `${lat.toFixed(5)}, ${lon.toFixed(5)}${mapsUrl ? ` &middot; <a class="bus-vehicle-link" href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer">${iconEl("externalLink", 13)} Map</a>` : ""}`
+        : "Coordinates unavailable"
+      }</span>
         </span>
         <span class="bus-vehicle-time">${escapeHtml(timeLabel)}</span>
       </div>`;
-    }).join("");
+  }
 
-    container.innerHTML = `<div class="bus-vehicle-list">${rows}</div>`;
+  function renderVehiclePage(kind, container) {
+    const s = rtState[kind];
+    const totalPages = Math.max(1, Math.ceil(s.vehicles.length / VEHICLE_PAGE_SIZE));
+    s.page = Math.min(Math.max(1, s.page), totalPages);
+    const start = (s.page - 1) * VEHICLE_PAGE_SIZE;
+    const rows = s.vehicles.slice(start, start + VEHICLE_PAGE_SIZE).map(vehicleRowHtml).join("");
+
+    const pagerHtml = s.vehicles.length > VEHICLE_PAGE_SIZE ? `
+      <div class="bus-vehicle-pager">
+        <button class="btn btn-small" type="button" data-vehicle-page="prev"${s.page <= 1 ? " disabled" : ""}>${iconEl("chevronLeft", 14)}<span>Prev</span></button>
+        <span class="bus-vehicle-pager-label">Page ${s.page} of ${totalPages}</span>
+        <button class="btn btn-small" type="button" data-vehicle-page="next"${s.page >= totalPages ? " disabled" : ""}>${iconEl("chevronRight", 14)}<span>Next</span></button>
+      </div>` : "";
+
+    container.innerHTML = `<div class="bus-vehicle-list">${rows}</div>${pagerHtml}`;
     hydrateIcons(container);
+
+    const prevBtn = container.querySelector('[data-vehicle-page="prev"]');
+    const nextBtn = container.querySelector('[data-vehicle-page="next"]');
+    if (prevBtn) prevBtn.addEventListener("click", () => { s.page -= 1; renderVehiclePage(kind, container); });
+    if (nextBtn) nextBtn.addEventListener("click", () => { s.page += 1; renderVehiclePage(kind, container); });
+  }
+
+  function renderVehicles(kind, container, vehicles) {
+    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+      rtState[kind].vehicles = [];
+      container.innerHTML = infoBanner("No live positions currently reported for this feed.");
+      return;
+    }
+
+    rtState[kind].vehicles = vehicles.slice().sort((a, b) => vehicleTimestampMs(b) - vehicleTimestampMs(a));
+    rtState[kind].page = 1;
+    renderVehiclePage(kind, container);
   }
 
   async function loadPrasaranaRealtime(category) {
@@ -651,7 +680,7 @@
     if (refreshBtn) refreshBtn.classList.add("is-loading");
     try {
       const payload = await fetchJson(`/api/bus-prasarana-realtime?category=${encodeURIComponent(category)}`);
-      renderVehicles(container, payload.data && payload.data.vehicles);
+      renderVehicles("prasarana", container, payload.data && payload.data.vehicles);
       if (updatedEl) updatedEl.textContent = `Last updated ${new Date(payload.fetchedAt || Date.now()).toLocaleTimeString()}`;
     } catch (err) {
       container.innerHTML = errorBanner(err.message || "Could not load live positions.", "prasaranaRtRetry");
@@ -671,7 +700,7 @@
     if (refreshBtn) refreshBtn.classList.add("is-loading");
     try {
       const payload = await fetchJson("/api/bus-mybas-johor-realtime");
-      renderVehicles(container, payload.data && payload.data.vehicles);
+      renderVehicles("mybas", container, payload.data && payload.data.vehicles);
       if (updatedEl) updatedEl.textContent = `Last updated ${new Date(payload.fetchedAt || Date.now()).toLocaleTimeString()}`;
     } catch (err) {
       container.innerHTML = errorBanner(err.message || "Could not load live positions.", "mybasRtRetry");

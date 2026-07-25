@@ -417,3 +417,28 @@
     text-align: left;
   }
 }
+
+.bus-vehicle-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.bus-vehicle-pager button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bus-vehicle-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bus-vehicle-pager-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
