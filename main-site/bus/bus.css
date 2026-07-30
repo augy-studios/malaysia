@@ -12,7 +12,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 999px;
   padding: 10px 18px;
   font-size: 0.98rem;
@@ -27,13 +27,13 @@
 
 .bus-tab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
 }
 
 .bus-tab[aria-selected="true"] {
-  color: #fff;
-  background: var(--brand-strong);
-  border-color: var(--brand-strong);
+  color: var(--bg);
+  background: var(--brand-ink);
+  border-color: var(--brand-ink);
 }
 
 .bus-tab-icon .icon,
@@ -64,13 +64,13 @@
 }
 
 .bus-select {
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 10px;
   padding: 9px 14px;
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--ink);
-  background: var(--surface-solid);
+  background: var(--surface-strong);
 }
 
 .bus-section {
@@ -96,7 +96,7 @@
 }
 
 .bus-section-head h2 .icon {
-  color: var(--brand-strong);
+  color: var(--brand-ink);
   width: 20px;
   height: 20px;
 }
@@ -161,18 +161,18 @@
 
 .search-input {
   width: 100%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
   padding: 10px 14px;
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-strong);
   margin-bottom: 12px;
 }
 
 .search-input:focus-visible {
-  outline: 2px solid var(--brand-strong);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 1px;
 }
 
@@ -180,9 +180,9 @@
   list-style: none;
   max-height: 360px;
   overflow-y: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--surface);
 }
 
 .directory-item {
@@ -190,7 +190,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .directory-item:last-child {
@@ -202,17 +202,17 @@
 }
 
 .directory-item.is-clickable:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-strong);
 }
 
 .directory-item.is-clickable:focus-visible {
-  outline: 2px solid var(--brand-strong);
+  outline: 2px solid var(--brand-ink);
   outline-offset: -2px;
 }
 
 .directory-item.is-selected {
-  background: var(--brand);
-  border-left: 3px solid var(--brand-strong);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  border-left: 3px solid var(--brand-ink);
   padding-left: 11px;
 }
 
@@ -233,7 +233,7 @@
 .stop-schedule {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--surface-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -257,8 +257,8 @@
   font-size: 0.78rem;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
   color: var(--ink);
   white-space: nowrap;
 }
@@ -271,7 +271,7 @@
 .stop-schedule-empty {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--surface-border);
   color: var(--muted);
   font-size: 0.85rem;
 }
@@ -280,7 +280,7 @@
   background: none;
   border: none;
   padding: 0;
-  color: var(--brand-strong);
+  color: var(--brand-ink);
   text-decoration: underline;
   font-size: 0.82rem;
   font-family: inherit;
@@ -305,8 +305,8 @@
   font-size: 0.72rem;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--brand);
-  color: var(--brand-strong);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
 }
 
 .directory-empty {
@@ -339,8 +339,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--brand);
-  color: var(--brand-strong);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
   font-size: 0.72rem;
   display: flex;
   align-items: center;
@@ -357,7 +357,7 @@
   height: 360px;
   width: 100%;
   border-radius: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   margin: 14px 0;
   overflow: hidden;
   z-index: 0;
@@ -365,7 +365,8 @@
 
 .bus-live-map .leaflet-popup-content-wrapper,
 .bus-live-map .leaflet-popup-tip {
-  background: var(--surface);
+  /* opaque: popups float over map tiles that stay light in both modes */
+  background: var(--bg);
   color: var(--ink);
 }
 
@@ -383,9 +384,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--surface);
 }
 
 .bus-vehicle-row.is-clickable {
@@ -393,16 +394,16 @@
 }
 
 .bus-vehicle-row.is-clickable:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-strong);
 }
 
 .bus-vehicle-row.is-clickable:focus-visible {
-  outline: 2px solid var(--brand-strong);
+  outline: 2px solid var(--brand-ink);
   outline-offset: -2px;
 }
 
 .bus-vehicle-icon {
-  color: var(--brand-strong);
+  color: var(--brand-ink);
   display: flex;
 }
 
@@ -472,4 +473,12 @@
   color: var(--muted);
   font-size: 0.85rem;
   white-space: nowrap;
+}
+
+/* -- Dark mode: weaken the brand tint so --brand-ink stays readable on it -- */
+
+:root[data-mode="dark"] .directory-item.is-selected,
+:root[data-mode="dark"] .badge,
+:root[data-mode="dark"] .lookup-stop-index {
+  background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
 }

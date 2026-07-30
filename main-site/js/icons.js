@@ -18,6 +18,7 @@
     alertTriangle: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
     alertOctagon: '<polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     cloud: '<path d="M17.5 19H8a4.5 4.5 0 1 1 1.06-8.87A6 6 0 0 1 20 12a4 4 0 0 1 0 8 3 3 0 0 1-.5-.02"/>',
     cloudSun: '<path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M21.17 8a5 5 0 1 0-7.7 5.7"/><path d="M12.5 20h4.5a3.5 3.5 0 0 0 .4-6.98A5.5 5.5 0 0 0 7 14.5a3.5 3.5 0 0 0 .5 6.98"/>',
     cloudRain: '<path d="M17.5 15H8a4.5 4.5 0 1 1 1.06-8.87A6 6 0 0 1 20 8a4 4 0 0 1 0 8"/><line x1="9" y1="18" x2="9" y2="21"/><line x1="13" y1="18" x2="13" y2="21"/><line x1="17" y1="18" x2="17" y2="21"/>',
@@ -43,5 +44,12 @@
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
   }
 
-  global.Icons = { html: html, PATHS: PATHS };
+  /* Sizeless variant for [data-icon] hydration; sizing comes from CSS. */
+  function icon(name) {
+    if (!PATHS[name]) return '';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + PATHS[name] + '</svg>';
+  }
+
+  global.Icons = { html: html, icon: icon, PATHS: PATHS };
 })(window);

@@ -38,8 +38,8 @@
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: var(--brand);
-  color: var(--brand-strong);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,11 +47,11 @@
 }
 
 .quake-card-icon.severity-high {
-  color: #991b1b;
+  color: var(--error);
 }
 
 .quake-card-icon.severity-medium {
-  color: #9a3412;
+  color: var(--warn);
 }
 
 .quake-card-body {
@@ -75,21 +75,21 @@
   font-size: 0.95rem;
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--brand);
-  color: var(--brand-strong);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
+  border: 1px solid var(--surface-border);
 }
 
 .quake-mag.severity-high {
-  background: rgba(185, 28, 28, 0.12);
-  color: #991b1b;
-  border-color: rgba(185, 28, 28, 0.3);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 30%, transparent);
 }
 
 .quake-mag.severity-medium {
-  background: rgba(234, 88, 12, 0.12);
-  color: #9a3412;
-  border-color: rgba(234, 88, 12, 0.3);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
 }
 
 .quake-location {
@@ -128,4 +128,11 @@
     width: 36px;
     height: 36px;
   }
+}
+
+/* -- Dark mode: weaken the brand tint so --brand-ink stays readable on it -- */
+
+:root[data-mode="dark"] .quake-card-icon,
+:root[data-mode="dark"] .quake-mag {
+  background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
 }

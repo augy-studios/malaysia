@@ -22,8 +22,8 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: var(--brand);
-  color: var(--brand-strong);
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,14 +74,14 @@
   font-size: 0.95rem;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 10px;
   padding: 8px 12px;
   min-width: 200px;
 }
 
 .district-search-input:focus-visible {
-  outline: 2px solid var(--brand-strong);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 1px;
 }
 
@@ -170,7 +170,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--surface-border);
 }
 
 .forecast-day:first-child {
@@ -179,7 +179,7 @@
 
 .forecast-day-icon {
   flex-shrink: 0;
-  color: var(--brand-strong);
+  color: var(--brand-ink);
 }
 
 .forecast-day-info {
@@ -269,4 +269,10 @@
     min-width: 0;
     width: 100%;
   }
+}
+
+/* -- Dark mode: weaken the brand tint so --brand-ink stays readable on it -- */
+
+:root[data-mode="dark"] .umbrella-icon {
+  background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
 }

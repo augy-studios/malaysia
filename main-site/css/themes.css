@@ -1,83 +1,77 @@
 /* ==========================================================================
-   Theme palettes - static colours only, no gradients/orbs/blobs.
-   Each theme sets a brand swatch plus derived surface/border/strong colours.
-   Default theme is "classic".
+   Theme tokens - two independent axes that combine freely:
+   brand colour (7 swatches, data-color-theme) and mode (light/dark, data-mode).
+   Static colours only, no gradients/orbs/blobs.
+   Defaults are always light + classic, regardless of OS preference.
    ========================================================================== */
 
+/* -- Brand colour tokens (7 swatches) -- */
+
 :root,
-[data-theme="classic"] {
+:root[data-color-theme="classic"] {
   --brand: #ccffcc;
-  --brand-strong: #2f9e44;
-  --bg: #f2fbf2;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(247, 255, 247, 0.92);
-  --border: rgba(47, 158, 68, 0.25);
-  --ink: #10181a;
-  --muted: #56635d;
+  --brand-rgb: 204, 255, 204;
 }
 
-[data-theme="not-green-1"] {
+:root[data-color-theme="not-green-1"] {
   --brand: #ffcccc;
-  --brand-strong: #d64545;
-  --bg: #fdf2f2;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(255, 247, 247, 0.92);
-  --border: rgba(214, 69, 69, 0.25);
-  --ink: #1a1010;
-  --muted: #6a5555;
+  --brand-rgb: 255, 204, 204;
 }
 
-[data-theme="not-green-2"] {
+:root[data-color-theme="not-green-2"] {
   --brand: #ccccff;
-  --brand-strong: #5b5bd6;
-  --bg: #f3f3fd;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(248, 248, 255, 0.92);
-  --border: rgba(91, 91, 214, 0.25);
-  --ink: #12121e;
-  --muted: #5a5a70;
+  --brand-rgb: 204, 204, 255;
 }
 
-[data-theme="not-green-3"] {
+:root[data-color-theme="not-green-3"] {
   --brand: #ffffcc;
-  --brand-strong: #b58900;
-  --bg: #fdfdf0;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(255, 255, 245, 0.92);
-  --border: rgba(181, 137, 0, 0.25);
-  --ink: #1c1a10;
-  --muted: #6e6650;
+  --brand-rgb: 255, 255, 204;
 }
 
-[data-theme="not-green-4"] {
+:root[data-color-theme="not-green-4"] {
   --brand: #ffccff;
-  --brand-strong: #c0389c;
-  --bg: #fdf2fc;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(255, 247, 254, 0.92);
-  --border: rgba(192, 56, 156, 0.25);
-  --ink: #1e1019;
-  --muted: #6e5568;
+  --brand-rgb: 255, 204, 255;
 }
 
-[data-theme="not-green-5"] {
+:root[data-color-theme="not-green-5"] {
   --brand: #ccffff;
-  --brand-strong: #0891b2;
-  --bg: #f0fdfd;
-  --surface: rgba(255, 255, 255, 0.55);
-  --surface-solid: rgba(245, 255, 255, 0.92);
-  --border: rgba(8, 145, 178, 0.25);
-  --ink: #0f1a1c;
-  --muted: #4f6a6e;
+  --brand-rgb: 204, 255, 255;
 }
 
-[data-theme="really-light-green"] {
+:root[data-color-theme="really-light-green"] {
   --brand: #ffffff;
-  --brand-strong: #6b7280;
-  --bg: #fafafa;
-  --surface: rgba(255, 255, 255, 0.6);
-  --surface-solid: rgba(255, 255, 255, 0.95);
-  --border: rgba(107, 114, 128, 0.25);
-  --ink: #101418;
-  --muted: #5b6470;
+  --brand-rgb: 255, 255, 255;
+}
+
+/* -- Light / dark surface tokens -- */
+
+:root,
+:root[data-mode="light"] {
+  --bg: #eef2f0;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-strong: rgba(255, 255, 255, 0.78);
+  --surface-border: rgba(255, 255, 255, 0.65);
+  --ink: #121815;
+  --muted: #5b665f;
+  --shadow: 0 10px 30px rgba(20, 40, 30, 0.10);
+  --brand-ink: #1f6b3d;
+  --ok: #16a34a;
+  --warn: #b45309;
+  --busy: #64748b;
+  --error: #b91c1c;
+}
+
+:root[data-mode="dark"] {
+  --bg: #0c100e;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.11);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --ink: #eef2ef;
+  --muted: #9aa7a0;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  --brand-ink: #bff5cf;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --busy: #94a3b8;
+  --error: #f87171;
 }

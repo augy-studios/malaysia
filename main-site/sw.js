@@ -1,4 +1,4 @@
-const CACHE = "malaysia-boleh-v28";
+const CACHE = "malaysia-boleh-v29";
 const API_CACHE = "malaysia-boleh-api-v5";
 
 const ASSETS = [
@@ -8,6 +8,7 @@ const ASSETS = [
   "/css/base.css",
   "/css/themes.css",
   "/js/icons.js",
+  "/js/ui.js",
   "/js/theme.js",
   "/weather/",
   "/weather/index.html",

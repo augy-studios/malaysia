@@ -27,6 +27,18 @@
     <meta property="og:url" content="https://malaysia.uwuapps.org/weather/" />
     <link rel="canonical" href="https://malaysia.uwuapps.org/weather/">
 
+    <script>
+        (function () {
+            try {
+                var k = "malaysiaboleh";
+                var m = localStorage.getItem(k + ".mode") || "light";
+                var c = localStorage.getItem(k + ".colorTheme") || localStorage.getItem("mb-theme") || "classic";
+                document.documentElement.setAttribute("data-mode", m);
+                document.documentElement.setAttribute("data-color-theme", c);
+            } catch (e) { /* storage unavailable, defaults apply */ }
+        })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
@@ -55,7 +67,9 @@
             <div class="topbar-actions">
                 <a id="coffeeButton" class="btn btn-coffee" href="https://donate.stripe.com/28o2akeAr3hv0DK6oo"
                     target="_blank" rel="noopener noreferrer"></a>
-                <button id="themeToggle" class="btn" type="button"></button>
+                <button class="icon-btn" id="themeBtn" type="button" aria-label="Theme">
+                    <span data-icon="sun"></span>
+                </button>
             </div>
         </div>
     </header>
@@ -125,7 +139,27 @@
         <p class="footer-sources">Source: MET Malaysia</p>
     </footer>
 
+
+    <div class="modal-backdrop hidden" id="themeModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+            <div class="modal-head">
+                <h2 id="themeModalTitle">Theme</h2>
+                <button class="icon-btn small" type="button" data-close-modal="themeModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <p class="modal-section-label">Mode</p>
+            <div class="mode-toggle" id="modeToggle">
+                <button class="mode-btn" type="button" data-mode="light"><span data-icon="sun"></span>Light</button>
+                <button class="mode-btn" type="button" data-mode="dark"><span data-icon="moon"></span>Dark</button>
+            </div>
+            <p class="modal-section-label">Brand colour</p>
+            <div class="swatch-grid" id="swatchGrid"></div>
+        </div>
+    </div>
+
     <script src="/js/icons.js"></script>
+    <script src="/js/ui.js"></script>
     <script src="/js/theme.js"></script>
     <script src="/weather/weather.js"></script>
 </body>

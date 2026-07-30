@@ -1,117 +1,173 @@
 /*
-  Shared across every page: theme picker (modal + persistence),
-  "Buy Augy a Coffee" link wiring, and service worker registration.
-*/
-(function () {
-  const STORAGE_KEY = 'mb-theme';
-  const DEFAULT_THEME = 'classic';
+  Theme system: 7 brand colour swatches + light/dark mode.
+  Default is always light + classic (#ccffcc), regardless of OS preference.
+  Once the user picks something, it is persisted.
 
-  const THEMES = [
-    { id: 'classic', label: 'Classic', swatch: '#ccffcc' },
-    { id: 'not-green-1', label: 'Not green 1', swatch: '#ffcccc' },
-    { id: 'not-green-2', label: 'Not green 2', swatch: '#ccccff' },
-    { id: 'not-green-3', label: 'Not green 3', swatch: '#ffffcc' },
-    { id: 'not-green-4', label: 'Not green 4', swatch: '#ffccff' },
-    { id: 'not-green-5', label: 'Not green 5', swatch: '#ccffff' },
-    { id: 'really-light-green', label: 'Really really light green', swatch: '#ffffff' }
+  Also carries the shared cross-page wiring: "Buy Augy a Coffee" link and
+  service worker registration.
+*/
+(function (global) {
+  const APP_KEY = 'malaysiaboleh';
+
+  const COLOR_THEMES = [
+    { id: 'classic', label: 'Classic', hex: '#ccffcc' },
+    { id: 'not-green-1', label: 'Not green 1', hex: '#ffcccc' },
+    { id: 'not-green-2', label: 'Not green 2', hex: '#ccccff' },
+    { id: 'not-green-3', label: 'Not green 3', hex: '#ffffcc' },
+    { id: 'not-green-4', label: 'Not green 4', hex: '#ffccff' },
+    { id: 'not-green-5', label: 'Not green 5', hex: '#ccffff' },
+    { id: 'really-light-green', label: 'Really really light green', hex: '#ffffff' }
   ];
 
-  function getSavedTheme() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && THEMES.some(function (t) { return t.id === saved; })) return saved;
-    } catch (e) { /* localStorage unavailable */ }
-    return DEFAULT_THEME;
+  const STORAGE_KEY_COLOR = APP_KEY + '.colorTheme';
+  const STORAGE_KEY_MODE = APP_KEY + '.mode';
+  const LEGACY_KEY = 'mb-theme';
+
+  function read(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
   }
 
-  function applyTheme(id) {
-    document.documentElement.setAttribute('data-theme', id);
+  function write(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ }
+  }
+
+  /* Old single-key format used the same swatch ids, so it maps straight over. */
+  function migrateLegacy() {
+    const legacy = read(LEGACY_KEY);
+    if (!legacy) return;
+    if (!read(STORAGE_KEY_COLOR) && COLOR_THEMES.some(function (t) { return t.id === legacy; })) {
+      write(STORAGE_KEY_COLOR, legacy);
+    }
+    try { localStorage.removeItem(LEGACY_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function hexToRgb(hex) {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255);
+  }
+
+  function getStoredColorTheme() {
+    const saved = read(STORAGE_KEY_COLOR);
+    if (saved && COLOR_THEMES.some(function (t) { return t.id === saved; })) return saved;
+    return 'classic';
+  }
+
+  function getStoredMode() {
+    return read(STORAGE_KEY_MODE) === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyColorTheme(id) {
+    const theme = COLOR_THEMES.find(function (t) { return t.id === id; }) || COLOR_THEMES[0];
+    document.documentElement.setAttribute('data-color-theme', theme.id);
+    document.documentElement.style.setProperty('--brand', theme.hex);
+    document.documentElement.style.setProperty('--brand-rgb', hexToRgb(theme.hex));
+    write(STORAGE_KEY_COLOR, theme.id);
     const meta = document.querySelector('meta[name="theme-color"]');
-    const theme = THEMES.find(function (t) { return t.id === id; }) || THEMES[0];
-    if (meta) meta.setAttribute('content', theme.swatch);
-    try { localStorage.setItem(STORAGE_KEY, id); } catch (e) { /* ignore */ }
+    if (meta) meta.setAttribute('content', theme.hex);
+    return theme;
   }
 
-  applyTheme(getSavedTheme());
+  function applyMode(mode) {
+    const resolved = mode === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-mode', resolved);
+    write(STORAGE_KEY_MODE, resolved);
+    return resolved;
+  }
 
-  function buildModal() {
-    if (document.getElementById('themeModal')) return;
+  function initTheme() {
+    migrateLegacy();
+    applyColorTheme(getStoredColorTheme());
+    applyMode(getStoredMode());
+  }
 
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.id = 'themeModal';
+  /* -- Modal wiring -- */
 
-    const optionsHtml = THEMES.map(function (t) {
-      return '<button type="button" class="theme-option" data-theme-id="' + t.id + '" aria-pressed="false">' +
-        '<span class="theme-swatch" style="background:' + t.swatch + '"></span>' +
-        '<span>' + t.label + '</span>' +
-        '<span class="theme-check">' + (window.Icons ? window.Icons.html('check', { size: 16 }) : '') + '</span>' +
+  function buildThemeModal() {
+    const grid = document.getElementById('swatchGrid');
+    if (!grid) return;
+
+    grid.innerHTML = COLOR_THEMES.map(function (t) {
+      return '<button class="swatch" data-theme-id="' + t.id + '" style="--swatch-color:' + t.hex +
+        '" type="button" aria-label="' + t.label + '">' +
+        '<span class="swatch-dot"></span>' +
+        '<span class="swatch-label">' + t.label + '</span>' +
         '</button>';
     }).join('');
 
-    overlay.innerHTML =
-      '<div class="modal-panel glass" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">' +
-      '<div class="modal-header">' +
-      '<h2 id="themeModalTitle">Choose a theme</h2>' +
-      '<button type="button" class="modal-close" id="themeModalClose" aria-label="Close">' +
-      (window.Icons ? window.Icons.html('close', { size: 18 }) : 'x') +
-      '</button>' +
-      '</div>' +
-      '<p class="modal-sub">Pick an accent colour. Everything stays light theme.</p>' +
-      '<div class="theme-grid">' + optionsHtml + '</div>' +
-      '</div>';
+    syncThemeModalState();
 
-    document.body.appendChild(overlay);
+    grid.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-theme-id]');
+      if (!btn) return;
+      applyColorTheme(btn.dataset.themeId);
+      syncThemeModalState();
+    });
 
-    function close() { overlay.classList.remove('open'); }
-    function open() {
-      syncPressedState();
-      overlay.classList.add('open');
-    }
-
-    function syncPressedState() {
-      const current = getSavedTheme();
-      overlay.querySelectorAll('.theme-option').forEach(function (btn) {
-        btn.setAttribute('aria-pressed', String(btn.dataset.themeId === current));
+    const toggle = document.getElementById('modeToggle');
+    if (toggle) {
+      toggle.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-mode]');
+        if (!btn) return;
+        applyMode(btn.dataset.mode);
+        syncThemeModalState();
       });
     }
+  }
 
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
+  function syncThemeModalState() {
+    const activeTheme = getStoredColorTheme();
+    const activeMode = getStoredMode();
+    document.querySelectorAll('#swatchGrid .swatch').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.themeId === activeTheme);
     });
-    document.getElementById('themeModalClose').addEventListener('click', close);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && overlay.classList.contains('open')) close();
+    document.querySelectorAll('#modeToggle .mode-btn').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.mode === activeMode);
     });
-    overlay.querySelectorAll('.theme-option').forEach(function (btn) {
+    updateThemeButtonIcon();
+  }
+
+  function updateThemeButtonIcon() {
+    const btn = document.getElementById('themeBtn');
+    if (!btn) return;
+    const span = btn.querySelector('[data-icon]');
+    if (!span) return;
+    span.setAttribute('data-icon', getStoredMode() === 'dark' ? 'moon' : 'sun');
+    if (global.UI) global.UI.hydrateIcons(btn);
+  }
+
+  function wireModals() {
+    document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        applyTheme(btn.dataset.themeId);
-        syncPressedState();
+        if (global.UI) global.UI.closeModal(btn.dataset.closeModal);
       });
     });
-
-    window.__openThemeModal = open;
-  }
-
-  function wireThemeToggle() {
-    const toggle = document.getElementById('themeToggle');
-    if (!toggle) return;
-    if (window.Icons && !toggle.dataset.iconSet) {
-      toggle.innerHTML = window.Icons.html('sun', { size: 18 }) + '<span class="btn-label">Theme</span>';
-      toggle.dataset.iconSet = '1';
-      toggle.setAttribute('aria-label', 'Choose theme');
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop && global.UI) global.UI.closeModal(backdrop.id);
+      });
+    });
+    const themeBtn = document.getElementById('themeBtn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        if (global.UI) global.UI.openModal('themeModal');
+      });
     }
-    buildModal();
-    toggle.addEventListener('click', function () {
-      window.__openThemeModal();
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach(function (backdrop) {
+        if (global.UI) global.UI.closeModal(backdrop.id);
+      });
     });
   }
+
+  /* -- Shared page furniture -- */
 
   function wireCoffeeButton() {
     const coffee = document.getElementById('coffeeButton');
     if (!coffee) return;
-    if (window.Icons && !coffee.dataset.iconSet) {
-      coffee.innerHTML = window.Icons.html('coffee', { size: 18 }) + '<span class="btn-label">Buy Augy a Coffee</span>';
+    if (global.Icons && !coffee.dataset.iconSet) {
+      coffee.innerHTML = global.Icons.html('coffee', { size: 18 }) +
+        '<span class="btn-label">Buy Augy a Coffee</span>';
       coffee.dataset.iconSet = '1';
       coffee.setAttribute('aria-label', 'Buy Augy a Coffee (opens in a new tab)');
     }
@@ -128,11 +184,25 @@
     }
   }
 
+  initTheme();
+
   document.addEventListener('DOMContentLoaded', function () {
-    wireThemeToggle();
+    /* Scoped to the theme UI; the page scripts own their own icon hydration. */
+    const modal = document.getElementById('themeModal');
+    if (global.UI && modal) global.UI.hydrateIcons(modal);
+    updateThemeButtonIcon();
+    buildThemeModal();
+    wireModals();
     wireCoffeeButton();
     registerServiceWorker();
   });
 
-  window.MBTheme = { THEMES: THEMES, applyTheme: applyTheme, getSavedTheme: getSavedTheme };
-})();
+  global.Theme = {
+    COLOR_THEMES: COLOR_THEMES,
+    applyColorTheme: applyColorTheme,
+    applyMode: applyMode,
+    getStoredColorTheme: getStoredColorTheme,
+    getStoredMode: getStoredMode,
+    initTheme: initTheme
+  };
+})(window);
