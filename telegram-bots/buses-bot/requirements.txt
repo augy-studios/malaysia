@@ -1,0 +1,11 @@
+# Pinned exactly. Installs cleanly on a fresh Debian 13 box with:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+telethon==1.44.0
+aiosqlite==0.22.1
+httpx==0.28.1
+python-dotenv==1.2.3
+
+# Test only, harmless in production
+pytest==9.1.1
+pytest-asyncio==1.4.0
