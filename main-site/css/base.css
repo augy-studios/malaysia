@@ -115,6 +115,40 @@ table {
   -webkit-overflow-scrolling: touch;
 }
 
+/* -- Update prompt bar -- */
+
+/* Full width at the very top of the document, above the sticky topbar, and
+   quieter than it: a tint so it reads as a notice rather than as layout.
+   Drawn by js/update.js only when a new service worker is waiting. */
+.update-notice {
+  background: color-mix(in srgb, var(--brand-ink) 12%, transparent);
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.update-notice-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 8px 20px;
+  /* Under the notch on a phone, where the bar is the topmost thing on screen. */
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+
+.update-notice p {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.update-notice .btn {
+  flex: none;
+  padding: 7px 14px;
+  font-size: 0.875rem;
+}
+
 /* -- Topbar -- */
 
 .topbar {
@@ -414,7 +448,8 @@ body.modal-open {
 /* -- Mode toggle -- */
 
 .mode-toggle {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
   padding: 4px;
   border-radius: 14px;
@@ -445,6 +480,21 @@ body.modal-open {
 .mode-btn.active {
   background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
   color: var(--brand-ink);
+}
+
+/* Time based mode only. Light and dark stay side by side and the third
+   spans the row beneath them: two equal columns would put the longer label
+   in a box too narrow to read at 320px, and the full width row also signals
+   this is a different kind of choice, a rule for picking a mode rather than
+   a mode. */
+.mode-btn-wide {
+  grid-column: 1 / -1;
+}
+
+.mode-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 /* -- Swatch grid -- */
@@ -595,6 +645,11 @@ body.modal-open {
 
   .topbar-inner {
     padding: 12px 14px;
+  }
+
+  .update-notice-inner {
+    padding: 8px 14px;
+    padding-top: max(8px, env(safe-area-inset-top));
   }
 
   .btn span.btn-label {
