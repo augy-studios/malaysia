@@ -31,11 +31,10 @@ Live as [@malaysiaweather_bot](https://t.me/malaysiaweather_bot).
 | Command | What it does |
 | --- | --- |
 | `/start` | What the bot is, every command, and links to the web app and donations |
-| `/weather` | Seven day forecast. `/weather Ipoh` goes straight there |
+| `/weather` | Seven day forecast for the last place you looked up. `/weather Ipoh` goes straight there |
 | `/warnings` | Weather warnings currently in force |
 | `/quake` | Recent earthquakes, newest first |
 | `/flood` | River gauge levels, worst first. `/flood Klang` searches |
-| `/nearby` | Closest forecast area and river gauges to a location you share |
 | `/fav` | Your saved places, or `/fav Ipoh` to look one up and save it |
 | `/unfav` | Remove something from your favourites |
 | `/sub` | Turn alerts on |

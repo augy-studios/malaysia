@@ -150,6 +150,23 @@ class BusesBot:
             first_name=getattr(sender, "first_name", None),
         )
 
+    def _stop_back_target(self, payload: dict[str, Any]) -> tuple[str, str, dict[str, Any]] | None:
+        """Where the 'back' button on a stop card should lead.
+
+        Stop cards are reached from several places, so the button that opened
+        one records where it came from and the card sends the user back there.
+        """
+
+        origin = payload.get("from")
+        if origin == "route" and payload.get("route"):
+            return ("Back to route", "route:view",
+                    {"op": payload["op"], "route": payload["route"]})
+        if origin == "fav":
+            return ("Favourites", "menu:favourites", {})
+        if origin == "search" and payload.get("q"):
+            return ("Back to results", "search:again", {"q": payload["q"]})
+        return None
+
     async def _favourite_for_stop(self, user_id: int, operator: str, stop_id: str) -> Any:
         for row in await self.db.list_favourites(user_id):
             if row["operator"] == operator and row["stop_id"] == stop_id and not row["route_id"]:
@@ -189,7 +206,10 @@ class BusesBot:
         await self.send(
             event.chat_id,
             doc,
-            buttons=views.start_buttons(self.settings.web_app_url, self.settings.donation_url),
+            buttons=await views.start_buttons(
+                self.db, user["user_id"],
+                self.settings.web_app_url, self.settings.donation_url,
+            ),
         )
         raise events.StopPropagation
 
@@ -219,7 +239,10 @@ class BusesBot:
             doc = RichDoc().heading("Nothing to remove", 3).para(
                 "You have not saved any favourites yet."
             )
-            await self.send(event.chat_id, doc)
+            await self.send(
+                event.chat_id, doc,
+                buttons=[await views.nav_row(self.db, user["user_id"])],
+            )
             raise events.StopPropagation
 
         doc, buttons = await views.favourites_doc(
@@ -254,7 +277,10 @@ class BusesBot:
             doc.heading("Nothing to switch off", 3)
             doc.para("You had no notifications enabled. Use /sub to set them up.")
 
-        await self.send(event.chat_id, doc)
+        await self.send(
+            event.chat_id, doc,
+            buttons=[await views.nav_row(self.db, user["user_id"])],
+        )
         raise events.StopPropagation
 
     async def on_settings(self, event: Any) -> None:
@@ -266,6 +292,7 @@ class BusesBot:
     async def on_live(self, event: Any) -> None:
         user = await self._user_of(event)
         buttons = await views.operator_picker(self.db, "live:show", user["user_id"])
+        buttons.append(await views.nav_row(self.db, user["user_id"]))
         doc = RichDoc().heading("Live buses", 3).para("Pick an operator to see what is moving now.")
         await self.send(event.chat_id, doc, buttons=buttons)
         raise events.StopPropagation
@@ -279,6 +306,7 @@ class BusesBot:
             raise events.StopPropagation
 
         buttons = await views.operator_picker(self.db, "routes:list", user["user_id"])
+        buttons.append(await views.nav_row(self.db, user["user_id"]))
         doc = RichDoc().heading("Browse routes", 3).para(
             "Pick an operator, or send a route number directly such as /routes 780."
         )
@@ -304,7 +332,10 @@ class BusesBot:
                 "Example: /stops KLCC",
             ]
         )
-        await self.send(event.chat_id, doc)
+        await self.send(
+            event.chat_id, doc,
+            buttons=[await views.nav_row(self.db, user["user_id"])],
+        )
         raise events.StopPropagation
 
     async def on_trip(self, event: Any) -> None:
@@ -316,6 +347,7 @@ class BusesBot:
             raise events.StopPropagation
 
         buttons = await views.operator_picker(self.db, "routes:list", user["user_id"])
+        buttons.append(await views.nav_row(self.db, user["user_id"]))
         doc = RichDoc().heading("Follow a bus", 3).para(
             "Pick an operator, choose a route, then pick a departure to see every "
             "stop on that journey."
@@ -355,7 +387,10 @@ class BusesBot:
                 f"{self.settings.nearby_radius_metres} m. The bot covers Klang "
                 "Valley, Penang and Johor Bahru, so coverage elsewhere is thin."
             )
-            await self.send(event.chat_id, doc)
+            await self.send(
+                event.chat_id, doc,
+                buttons=[await views.nav_row(self.db, user["user_id"])],
+            )
             raise events.StopPropagation
 
         doc.bullets(
@@ -377,6 +412,7 @@ class BusesBot:
                 ]
             )
 
+        buttons.append(await views.nav_row(self.db, user["user_id"]))
         await self.send(event.chat_id, doc, buttons=buttons)
         raise events.StopPropagation
 
@@ -391,11 +427,15 @@ class BusesBot:
             command = text[1:].split()[0].split("@")[0].lower()
             if command in KNOWN_COMMANDS:
                 return  # a dedicated handler already dealt with it
+            user = await self._user_of(event)
             doc = RichDoc().heading("Unknown command", 3).para(
                 "That command is not recognised. Send /start to see "
                 "everything on offer, or just send a stop name to search."
             )
-            await self.send(event.chat_id, doc)
+            await self.send(
+                event.chat_id, doc,
+                buttons=[await views.nav_row(self.db, user["user_id"])],
+            )
             return
 
         if len(text) < 2:
@@ -440,6 +480,73 @@ class BusesBot:
                                  payload: dict[str, Any], user: Any) -> None:
         user_id = user["user_id"]
 
+        # -- menu ---------------------------------------------------------
+        if action == "menu:home":
+            await event.answer()
+            doc, buttons = await views.menu_doc(self.db, user_id)
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "menu:stops":
+            await event.answer()
+            doc = RichDoc().heading("Find a stop", 3)
+            doc.para(
+                "Send the name of a stop and the search runs automatically, or "
+                "share your location to see what is nearby."
+            )
+            doc.bullets([f"Example: {b('Pasar Seni')}", "Example: /stops KLCC"])
+            await self.reply_to_button(
+                event, doc, buttons=[await views.nav_row(self.db, user_id)]
+            )
+            return
+
+        if action == "menu:routes":
+            await event.answer()
+            buttons = await views.operator_picker(self.db, "routes:list", user_id)
+            buttons.append(await views.nav_row(self.db, user_id))
+            doc = RichDoc().heading("Browse routes", 3).para(
+                "Pick an operator, or send a route number directly such as /routes 780."
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "menu:live":
+            await event.answer()
+            buttons = await views.operator_picker(self.db, "live:show", user_id)
+            buttons.append(await views.nav_row(self.db, user_id))
+            doc = RichDoc().heading("Live buses", 3).para(
+                "Pick an operator to see what is moving now."
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "menu:favourites":
+            await event.answer()
+            favourites = await self.db.list_favourites(user_id)
+            doc, buttons = await views.favourites_doc(self.db, favourites, user_id)
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "menu:subs":
+            await event.answer()
+            subs = await self.db.list_subscriptions(user_id)
+            doc, buttons = await views.subscriptions_doc(
+                self.db, subs, user_id, user["lead_minutes"], user["digest_time"]
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "search:again":
+            query = payload.get("q", "")
+            await event.answer()
+            stops = await self.gtfs.search_all_stops(query)
+            routes = await self.gtfs.search_all_routes(query)
+            doc, buttons = await views.search_results_doc(
+                self.db, query, stops, routes, user_id
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
         # -- stops --------------------------------------------------------
         if action == "stop:view":
             operator, stop_id = payload["op"], payload["stop"]
@@ -455,6 +562,7 @@ class BusesBot:
                 time_format=user["time_format"],
                 is_favourite=favourite is not None,
                 favourite_id=favourite["id"] if favourite else None,
+                back=self._stop_back_target(payload),
             )
             await event.answer()
             await self.reply_to_button(event, doc, buttons=buttons)
@@ -492,14 +600,17 @@ class BusesBot:
 
             # Editing in place would otherwise strand the user on a view with
             # no keyboard, so carry a way back to the stop.
-            buttons = [
+            buttons = await views.with_nav(
+                self.db,
                 [
-                    await views.cb(self.db, "🔄 Refresh", "stop:live",
-                                   {"op": operator, "stop": stop_id}, user_id),
-                    await views.cb(self.db, "◀ Back to stop", "stop:view",
-                                   {"op": operator, "stop": stop_id}, user_id),
-                ]
-            ]
+                    [
+                        await views.cb(self.db, "🔄 Refresh", "stop:live",
+                                       {"op": operator, "stop": stop_id}, user_id)
+                    ]
+                ],
+                user_id,
+                ("Back to stop", "stop:view", {"op": operator, "stop": stop_id}),
+            )
             await self.reply_to_button(event, doc, buttons=buttons)
             return
 
@@ -530,10 +641,9 @@ class BusesBot:
                 time_format=user["time_format"], page=int(payload.get("p", 0)),
             )
             await event.answer()
-            buttons = list(buttons)
-            buttons.append(
-                [await views.cb(self.db, "◀ Back to route", "route:view",
-                                {"op": operator, "route": route_id}, user_id)]
+            buttons = await views.with_nav(
+                self.db, buttons, user_id,
+                ("Back to route", "route:view", {"op": operator, "route": route_id}),
             )
             await self.reply_to_button(event, doc, buttons=buttons)
             return
@@ -572,6 +682,9 @@ class BusesBot:
             if nav:
                 buttons.append(nav)
 
+            buttons = await views.with_nav(
+                self.db, buttons, user_id, ("Operators", "menu:routes", {})
+            )
             await self.reply_to_button(event, doc, buttons=buttons)
             return
 
@@ -581,17 +694,20 @@ class BusesBot:
             feed = await self.gtfs.get_feed(operator)
             await event.answer()
 
+            # A withdrawn trip has no route to go back to, but the menu still
+            # gets the user somewhere rather than leaving a bare card.
             trip = feed.trips.get(trip_id)
-            buttons = []
-            if trip is not None:
-                buttons.append(
-                    [await views.cb(self.db, "◀ Back to route", "route:trips",
-                                    {"op": operator, "route": trip.route_id}, user_id)]
-                )
+            back = (
+                ("Back to departures", "route:trips",
+                 {"op": operator, "route": trip.route_id})
+                if trip is not None
+                else None
+            )
+            buttons = await views.with_nav(self.db, [], user_id, back)
             await self.reply_to_button(
                 event,
                 views.trip_doc(feed, operator, trip_id, user["time_format"]),
-                buttons=buttons or None,
+                buttons=buttons,
             )
             return
 
@@ -605,9 +721,17 @@ class BusesBot:
                 feed = await self.gtfs.get_feed(operator)
             except Exception:  # noqa: BLE001
                 pass
-            buttons = [
-                [await views.cb(self.db, "🔄 Refresh", "live:show", {"op": operator}, user_id)]
-            ]
+            buttons = await views.with_nav(
+                self.db,
+                [
+                    [
+                        await views.cb(self.db, "🔄 Refresh", "live:show",
+                                       {"op": operator}, user_id)
+                    ]
+                ],
+                user_id,
+                ("Operators", "menu:live", {}),
+            )
             await self.reply_to_button(
                 event, views.live_doc(operator, vehicles, feed), buttons=buttons
             )
@@ -666,9 +790,9 @@ class BusesBot:
                     [await views.cb(self.db, f"☆ {label}", "fav:addroute",
                                     {"op": operator, "stop": stop_id, "route": route_id}, user_id)]
                 )
-            buttons.append(
-                [await views.cb(self.db, "◀ Back to route", "route:view",
-                                {"op": operator, "route": route_id}, user_id)]
+            buttons = await views.with_nav(
+                self.db, buttons, user_id,
+                ("Back to route", "route:view", {"op": operator, "route": route_id}),
             )
             await self.reply_to_button(event, doc, buttons=buttons)
             return
@@ -692,18 +816,20 @@ class BusesBot:
                 f"{b(stop.stop_name)} on {b(route.display)} is in your favourites. "
                 "Turn on reminders for it with /sub."
             )
-            await self.reply_to_button(
-                event,
-                doc,
-                buttons=[
+            buttons = await views.with_nav(
+                self.db,
+                [
                     [
                         await views.cb(self.db, "🚏 View stop", "stop:view",
                                        {"op": operator, "stop": stop_id}, user_id),
-                        await views.cb(self.db, "◀ Back to route", "route:view",
-                                       {"op": operator, "route": route_id}, user_id),
+                        await views.cb(self.db, "🔔 Notifications", "menu:subs",
+                                       {}, user_id),
                     ]
                 ],
+                user_id,
+                ("Back to route", "route:view", {"op": operator, "route": route_id}),
             )
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "fav:remove":
@@ -857,12 +983,14 @@ class BusesBot:
             await self.db.remove_all_subscriptions(user_id)
             await event.answer("Your data has been deleted")
             doc = RichDoc().heading("Data deleted", 3).para(
-                "Everything stored about you is gone. Send /start whenever "
-                "you want to begin again."
+                "Everything stored about you is gone. You can carry on browsing "
+                "straight away, or send /start for the introduction again."
             )
-            # No keyboard here on purpose: every button would point at data
-            # that has just been deleted.
-            await self.reply_to_button(event, doc)
+            # Nothing here points at the deleted data: the menu only offers
+            # searching and browsing, which need no stored state.
+            await self.reply_to_button(
+                event, doc, buttons=[await views.nav_row(self.db, user_id)]
+            )
             return
 
         if action == "set:wipe:cancel":

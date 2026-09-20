@@ -49,6 +49,79 @@ def _clip(text: str, limit: int) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Navigation
+# ---------------------------------------------------------------------------
+
+
+async def nav_row(
+    db: Any,
+    user_id: int,
+    back: tuple[str, str, dict[str, Any]] | None = None,
+) -> list[Button]:
+    """The footer every card carries, so no view is ever a dead end.
+
+    Because callbacks edit the message in place, a card with no way onward
+    leaves the user with nothing to tap and no earlier message to go back to.
+    `back` is an optional (label, action, payload) triple for the view one step
+    up; Menu is always present as the escape hatch to the top level.
+    """
+
+    row: list[Button] = []
+    if back is not None:
+        label, action, payload = back
+        row.append(await cb(db, f"◀ {label}", action, payload, user_id))
+    row.append(await cb(db, "🏠 Menu", "menu:home", {}, user_id))
+    return row
+
+
+async def with_nav(
+    db: Any,
+    buttons: list[list[Button]],
+    user_id: int,
+    back: tuple[str, str, dict[str, Any]] | None = None,
+) -> list[list[Button]]:
+    """Append the navigation footer to a keyboard."""
+
+    rows = list(buttons)
+    rows.append(await nav_row(db, user_id, back))
+    return rows
+
+
+async def menu_doc(db: Any, user_id: int, has_home: bool = False
+                   ) -> tuple[RichDoc, list[list[Button]]]:
+    """The top level every card can get back to."""
+
+    doc = RichDoc()
+    doc.heading("Menu", 3)
+    doc.para(
+        "Pick a section below, or send a station or line name at any time to "
+        "search. Sharing your location brings back the nearest stations."
+    )
+
+    buttons: list[list[Button]] = []
+    if has_home:
+        buttons.append([await cb(db, "⏱ Next from home", "next:home", {}, user_id)])
+
+    buttons.extend(
+        [
+            [
+                await cb(db, "🚉 Find a station", "menu:stations", {}, user_id),
+                await cb(db, "🚆 Browse lines", "menu:lines", {}, user_id),
+            ],
+            [
+                await cb(db, "📡 Live trains", "live:show", {}, user_id),
+                await cb(db, "★ Favourites", "menu:favourites", {}, user_id),
+            ],
+            [
+                await cb(db, "🔔 Notifications", "menu:subs", {}, user_id),
+                await cb(db, "⚙ Settings", "set:back", {}, user_id),
+            ],
+        ]
+    )
+    return doc, buttons
+
+
+# ---------------------------------------------------------------------------
 # /start
 # ---------------------------------------------------------------------------
 
@@ -108,12 +181,14 @@ def start_doc(first_name: str, web_app_url: str, donation_url: str) -> RichDoc:
     return doc
 
 
-def start_buttons(web_app_url: str, donation_url: str) -> list[list[Button]]:
+async def start_buttons(db: Any, user_id: int, web_app_url: str,
+                        donation_url: str) -> list[list[Button]]:
     return [
         [
             Button.url("Open the web app", web_app_url),
             Button.url("Support the project", donation_url),
-        ]
+        ],
+        [await cb(db, "🏠 Menu", "menu:home", {}, user_id)],
     ]
 
 
@@ -143,7 +218,7 @@ async def search_results_doc(
             "You can also browse everything with /stations and /lines, or share "
             "your location to see what is nearby."
         )
-        return doc, buttons
+        return doc, await with_nav(db, buttons, user_id)
 
     if stops:
         doc.heading("Stations", 4)
@@ -154,10 +229,12 @@ async def search_results_doc(
             ]
         )
         for operator, stop in stops[:8]:
+            # The query rides along so the station card can return to these results.
             buttons.append(
                 [
                     await cb(db, f"🚉 {_clip(stop.display, 30)}", "stop:view",
-                             {"op": operator, "stop": stop.stop_id}, user_id)
+                             {"op": operator, "stop": stop.stop_id,
+                              "from": "search", "q": query[:64]}, user_id)
                 ]
             )
 
@@ -177,7 +254,7 @@ async def search_results_doc(
                 ]
             )
 
-    return doc, buttons
+    return doc, await with_nav(db, buttons, user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +302,7 @@ async def stop_doc(
     favourite_id: int | None = None,
     is_home: bool = False,
     day: date | None = None,
+    back: tuple[str, str, dict[str, Any]] | None = None,
 ) -> tuple[RichDoc, list[list[Button]]]:
     doc = RichDoc()
     doc.heading(stop.display, 3)
@@ -297,7 +375,7 @@ async def stop_doc(
             [Button.url("📍 Open in Maps", f"https://www.google.com/maps?q={stop.lat},{stop.lon}")]
         )
 
-    return doc, buttons
+    return doc, await with_nav(db, buttons, user_id, back)
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +421,11 @@ async def route_doc(
         stop = feed.stops.get(stop_id)
         if not stop:
             continue
+        # Carry the line so the station card can offer a way back to it.
         buttons.append(
             [await cb(db, f"🚉 {_clip(stop.display, 30)}", "stop:view",
-                      {"op": operator, "stop": stop_id}, user_id)]
+                      {"op": operator, "stop": stop_id, "from": "route",
+                       "route": route.route_id}, user_id)]
         )
 
     nav: list[Button] = []
@@ -365,7 +445,9 @@ async def route_doc(
         ]
     )
 
-    return doc, buttons
+    return doc, await with_nav(
+        db, buttons, user_id, ("All lines", "lines:list", {"op": operator})
+    )
 
 
 def _ordered_stations(feed: Feed, route_id: str) -> list[str]:
@@ -405,6 +487,8 @@ async def trip_list_doc(
     doc.heading(f"Trains on {route.display}", 3)
 
     if not trips:
+        # The caller appends the navigation footer, so an empty list here still
+        # leaves the user with a way back.
         doc.para("No individual trains are published for this line today.")
         return doc, []
 
@@ -537,7 +621,7 @@ async def favourites_doc(
             "You have not saved anything yet. Send a station name, share your "
             f"location, or browse with /stations, then tap {b('Add to favourites')}."
         )
-        return doc, []
+        return doc, await with_nav(db, [], user_id)
 
     doc.bullets(
         [
@@ -558,11 +642,12 @@ async def favourites_doc(
             buttons.append(
                 [
                     await cb(db, f"🚉 {label}", "stop:view",
-                             {"op": row["operator"], "stop": row["stop_id"]}, user_id)
+                             {"op": row["operator"], "stop": row["stop_id"],
+                              "from": "fav"}, user_id)
                 ]
             )
 
-    return doc, buttons
+    return doc, await with_nav(db, buttons, user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -626,7 +711,11 @@ async def subscriptions_doc(
             [await cb(db, f"{state} {label}", "sub:toggle", {"kind": kind}, user_id)]
         )
 
-    return doc, buttons
+    buttons.append(
+        [await cb(db, "★ Your favourites", "menu:favourites", {}, user_id)]
+    )
+
+    return doc, await with_nav(db, buttons, user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -673,7 +762,7 @@ async def settings_doc(db: Any, user: Any, user_id: int) -> tuple[RichDoc, list[
         [await cb(db, "🗑 Delete my data", "set:wipe", {}, user_id)],
     ]
 
-    return doc, buttons
+    return doc, await with_nav(db, buttons, user_id)
 
 
 async def operator_picker(db: Any, action: str, user_id: int,

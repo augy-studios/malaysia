@@ -46,7 +46,6 @@ from .timeutils import now_myt
 from .views import (
     SUBSCRIPTION_LABELS,
     about_doc,
-    ask_location_doc,
     error_doc,
     favourites_doc,
     flood_overview_doc,
@@ -248,7 +247,6 @@ class WeatherBot:
         client.add_event_handler(self.on_warnings, command("warnings"))
         client.add_event_handler(self.on_quake, command("quake"))
         client.add_event_handler(self.on_flood, command("flood"))
-        client.add_event_handler(self.on_nearby, command("nearby"))
         client.add_event_handler(self.on_fav, command("fav"))
         client.add_event_handler(self.on_unfav, command("unfav"))
         client.add_event_handler(self.on_sub, command("sub"))
@@ -287,12 +285,27 @@ class WeatherBot:
         await self._render(event, about_doc(), [await self.nav(back="home")])
 
     async def on_weather(self, event: Any) -> None:
-        await self._user_of(event)
+        """A bare /weather answers with wherever the user last looked.
+
+        Asking "which town?" when the bot already knows the answer from a
+        moment ago is a step the user should not have to repeat, so the menu
+        only appears when there is genuinely nothing remembered.
+        """
+
+        user = await self._user_of(event)
         query = _args(event)
-        if not query:
-            await self._show_weather_menu(event)
+        if query:
+            await self._show_location_search(event, query)
             return
-        await self._show_location_search(event, query)
+
+        remembered = str(user["last_location"] or "")
+        if remembered:
+            location = await self.feeds.location_by_id(remembered)
+            if location is not None:
+                await self._open_location(event, location)
+                return
+
+        await self._show_weather_menu(event)
 
     async def on_warnings(self, event: Any) -> None:
         await self._user_of(event)
@@ -309,13 +322,6 @@ class WeatherBot:
             await self._show_station_search(event, query)
         else:
             await self._show_floods(event)
-
-    async def on_nearby(self, event: Any) -> None:
-        user = await self._user_of(event)
-        if user["last_lat"] is not None and user["last_lon"] is not None:
-            await self._show_nearby(event, float(user["last_lat"]), float(user["last_lon"]))
-            return
-        await self._render(event, ask_location_doc(), [await self.nav(back="home")])
 
     async def on_fav(self, event: Any) -> None:
         await self._user_of(event)
@@ -390,18 +396,21 @@ class WeatherBot:
         doc = RichDoc()
         doc.heading("Forecasts", level=2)
         if favourites:
-            doc.para("Choose one of your saved areas, or send any town name.")
+            doc.para(
+                "Choose one of your saved areas, send any town name, or share "
+                "your location to get the closest forecast."
+            )
         else:
             doc.para(
                 "Send a town name such as Ipoh, Kuantan or Kota Kinabalu and "
-                "the bot will find its forecast. You can also share a location."
+                "the bot will find its forecast. Sharing your location through "
+                "the Telegram attachment menu works too, at any time."
             )
 
         rows = [
             [Button.inline(str(fav["label"]), await self._cb("loc", r=str(fav["ref_id"])))]
             for fav in favourites[:CHOICE_LIMIT]
         ]
-        rows.append([Button.inline("Use my location", await self._cb("ask_location"))])
         rows.append(await self.nav(back="home"))
         await self._render(event, doc, rows)
 
@@ -498,6 +507,13 @@ class WeatherBot:
             )
 
         user = await self._user_of(event)
+
+        # Remembered so a bare /weather can answer straight away next time
+        # rather than asking where the user means.
+        await self.db.set_user_field(
+            int(user["user_id"]), "last_location", location.location_id
+        )
+
         saved = await self.db.find_favourite(
             int(user["user_id"]), "location", location.location_id
         )
@@ -882,11 +898,6 @@ class WeatherBot:
 
         elif action == "menu_weather":
             await self._show_weather_menu(event)
-
-        elif action == "ask_location":
-            await self._render(
-                event, ask_location_doc(), [await self.nav(back="menu_weather", back_label="Forecasts")]
-            )
 
         elif action == "loc":
             location = await self.feeds.location_by_id(str(payload.get("r", "")))

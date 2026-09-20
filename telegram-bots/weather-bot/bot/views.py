@@ -107,11 +107,10 @@ def start_doc(first_name: str = "") -> RichDoc:
         ["Command", "What it does"],
         [
             ["/start", "This overview"],
-            ["/weather", "Seven day forecast for any town"],
+            ["/weather", "Seven day forecast, for the last place or any town"],
             ["/warnings", "Weather warnings currently in force"],
             ["/quake", "Recent earthquakes in and around Malaysia"],
             ["/flood", "River levels and which gauges are rising"],
-            ["/nearby", "Closest forecast and gauges to your location"],
             ["/fav", "Save a town or river gauge to favourites"],
             ["/unfav", "Remove something from favourites"],
             ["/sub", "Turn alerts on"],
@@ -505,24 +504,6 @@ def nearby_doc(
     return _footer(doc, snapshot)
 
 
-def ask_location_doc() -> RichDoc:
-    doc = RichDoc()
-    doc.heading("Share a location", level=3)
-    doc.para(
-        "Send a location using the Telegram attachment menu, choosing "
-        + b("Location")
-        + ", and the bot will report the closest forecast area and river "
-        "gauges."
-    )
-    doc.para(
-        i(
-            "Your coordinates are used to work out what is nearby and are kept "
-            "only so the answer can be refreshed later. They are never shared."
-        )
-    )
-    return doc
-
-
 # ---------------------------------------------------------------------------
 # Favourites and subscriptions
 # ---------------------------------------------------------------------------
@@ -828,7 +809,6 @@ __all__ = [
     "station_doc",
     "station_list_doc",
     "nearby_doc",
-    "ask_location_doc",
     "favourites_doc",
     "subscriptions_doc",
     "settings_doc",

@@ -455,7 +455,6 @@ def test_start_lists_every_command_without_naming_the_bot():
         "/warnings",
         "/quake",
         "/flood",
-        "/nearby",
         "/fav",
         "/unfav",
         "/sub",
@@ -643,3 +642,67 @@ async def test_cache_respects_age_and_falls_back_when_stale(db):
     # The stale copy is still retrievable for the upstream-failure path.
     fallback = await db.cache_get_any_age("forecast")
     assert fallback is not None and fallback[0] == b"[]"
+
+
+@pytest.mark.asyncio
+async def test_last_location_is_remembered_for_a_bare_weather(db):
+    """/weather with no argument relies on this column being stored."""
+
+    await db.ensure_user(1, 1)
+    user = await db.get_user(1)
+    # A brand new user has nothing remembered, which is what sends them to
+    # the prompt rather than to a stale forecast.
+    assert user["last_location"] == ""
+
+    await db.set_user_field(1, "last_location", "St001")
+    user = await db.get_user(1)
+    assert user["last_location"] == "St001"
+
+
+@pytest.mark.asyncio
+async def test_last_location_column_is_added_to_an_existing_database(tmp_path):
+    """An upgrade must not lose the rows a running bot already has."""
+
+    import aiosqlite
+
+    path = tmp_path / "old.sqlite3"
+    # A database from before the column existed, with a user already in it.
+    async with aiosqlite.connect(path) as old:
+        await old.execute(
+            """
+            CREATE TABLE users (
+                user_id         INTEGER PRIMARY KEY,
+                chat_id         INTEGER NOT NULL,
+                username        TEXT,
+                first_name      TEXT,
+                time_format     TEXT    NOT NULL DEFAULT '12h',
+                quiet_from      TEXT    NOT NULL DEFAULT '23:00',
+                quiet_to        TEXT    NOT NULL DEFAULT '06:00',
+                quiet_enabled   INTEGER NOT NULL DEFAULT 1,
+                digest_time     TEXT    NOT NULL DEFAULT '07:00',
+                quake_threshold REAL    NOT NULL DEFAULT 5.0,
+                flood_threshold TEXT    NOT NULL DEFAULT 'ALERT',
+                home_location   TEXT    NOT NULL DEFAULT '',
+                last_lat        REAL,
+                last_lon        REAL,
+                created_at      INTEGER NOT NULL,
+                updated_at      INTEGER NOT NULL
+            )
+            """
+        )
+        await old.execute(
+            "INSERT INTO users (user_id, chat_id, created_at, updated_at) "
+            "VALUES (7, 7, 0, 0)"
+        )
+        await old.commit()
+
+    database = Database(path)
+    await database.connect()
+    try:
+        user = await database.get_user(7)
+        assert user is not None, "the existing row survived the migration"
+        assert user["last_location"] == ""
+        await database.set_user_field(7, "last_location", "St042")
+        assert (await database.get_user(7))["last_location"] == "St042"
+    finally:
+        await database.close()

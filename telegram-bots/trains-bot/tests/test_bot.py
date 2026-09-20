@@ -760,3 +760,89 @@ async def test_subscription_toggle_is_idempotent(db):
 
     await db.remove_subscriptions_of_kind(1, "digest")
     assert not await db.has_subscription(1, "digest")
+
+
+# ---------------------------------------------------------------------------
+# Navigation
+# ---------------------------------------------------------------------------
+
+
+async def test_every_card_offers_a_way_out(db):
+    """No view may edit itself into a message with nothing to tap.
+
+    Callbacks replace the message in place, so a card without buttons leaves
+    the user stuck with no earlier message to return to.
+    """
+
+    from bot import views
+
+    await db.ensure_user(1, 1)
+
+    docs = [
+        await views.search_results_doc(db, "nothing matches", [], [], 1),
+        await views.favourites_doc(db, [], 1),
+        await views.subscriptions_doc(db, [], 1, 10, "07:00"),
+        await views.menu_doc(db, 1),
+    ]
+    for _doc, buttons in docs:
+        assert buttons, "a card was rendered with no keyboard at all"
+
+
+async def test_nav_row_is_menu_only_without_a_back_target(db):
+    from bot import views
+
+    row = await views.nav_row(db, 1)
+    assert len(row) == 1
+
+    row = await views.nav_row(db, 1, ("Back to line", "route:view", {"op": "x"}))
+    assert len(row) == 2
+    assert row[0].text.startswith("◀")
+
+
+async def test_with_nav_appends_rather_than_replacing(db):
+    from bot import views
+
+    original = [[await views.cb(db, "Keep me", "stop:view", {}, 1)]]
+    rows = await views.with_nav(db, original, 1)
+
+    assert len(rows) == 2
+    assert rows[0][0].text == "Keep me"
+    # The caller's own list must not be mutated, or repeated renders would
+    # stack one navigation row on top of another.
+    assert len(original) == 1
+
+
+def test_stop_back_target_follows_where_the_user_came_from():
+    """A station opened from a line goes back to that line, not to the menu."""
+
+    from bot.main import TrainsBot
+
+    resolve = TrainsBot._stop_back_target
+
+    assert resolve(None, {"op": "ktmb", "stop": "KL01"}) is None
+
+    label, action, payload = resolve(
+        None, {"op": "ktmb", "stop": "KL01", "from": "route", "route": "L1"}
+    )
+    assert action == "route:view"
+    assert payload == {"op": "ktmb", "route": "L1"}
+
+    _label, action, _payload = resolve(None, {"op": "ktmb", "from": "fav"})
+    assert action == "menu:favourites"
+
+    _label, action, payload = resolve(
+        None, {"op": "ktmb", "from": "search", "q": "sentral"}
+    )
+    assert action == "search:again"
+    assert payload == {"q": "sentral"}
+
+
+def test_stop_back_target_ignores_an_incomplete_origin():
+    """A truncated payload must not build a button that leads nowhere."""
+
+    from bot.main import TrainsBot
+
+    resolve = TrainsBot._stop_back_target
+
+    assert resolve(None, {"op": "ktmb", "from": "route"}) is None
+    assert resolve(None, {"op": "ktmb", "from": "search"}) is None

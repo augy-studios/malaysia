@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS users (
     -- Flood indicator at or above which an alert fires: ALERT, WARNING, DANGER.
     flood_threshold TEXT    NOT NULL DEFAULT 'ALERT',
     home_location   TEXT    NOT NULL DEFAULT '',
+    -- The forecast area looked up most recently, so /weather can answer
+    -- without asking again.
+    last_location   TEXT    NOT NULL DEFAULT '',
     last_lat        REAL,
     last_lon        REAL,
     created_at      INTEGER NOT NULL,
@@ -138,7 +141,11 @@ CREATE TABLE IF NOT EXISTS alert_state (
 
 # Columns added after the first release. SQLite has no "ADD COLUMN IF NOT
 # EXISTS", so each is applied only when missing.
-MIGRATIONS: tuple[tuple[str, str], ...] = ()
+MIGRATIONS: tuple[tuple[str, str], ...] = (
+    # /weather with no argument answers with whatever was looked up last, so
+    # the forecast area is remembered alongside the coordinates.
+    ("users", "last_location TEXT NOT NULL DEFAULT ''"),
+)
 
 
 def _now() -> int:
@@ -246,6 +253,7 @@ class Database:
             "quake_threshold",
             "flood_threshold",
             "home_location",
+            "last_location",
             "last_lat",
             "last_lon",
         }

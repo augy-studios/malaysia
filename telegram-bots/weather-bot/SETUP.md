@@ -85,11 +85,10 @@ leading slashes:
 
 ```
 start - What this bot does and every command available
-weather - Seven day forecast for any town
+weather - Seven day forecast, for the last place or any town
 warnings - Weather warnings currently in force
 quake - Recent earthquakes in and around Malaysia
 flood - River levels and which gauges are rising
-nearby - Closest forecast and river gauges to your location
 fav - Save a town or river gauge to your favourites
 unfav - Remove something from your favourites
 sub - Turn alerts on
