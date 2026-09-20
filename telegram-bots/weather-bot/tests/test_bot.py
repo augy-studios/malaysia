@@ -38,6 +38,7 @@ from bot.timeutils import (
 )
 from bot.views import (
     digest_doc,
+    favourites_doc,
     flood_alert_doc,
     forecast_doc,
     quakes_doc,
@@ -464,6 +465,27 @@ def test_start_lists_every_command_without_naming_the_bot():
         assert command in html
     # The bot's username must not appear in any command.
     assert "@" not in html
+
+
+def test_start_presents_the_commands_as_a_table():
+    """The sibling bots use a table here, so this one matches them."""
+
+    html = start_doc().to_html()
+    assert "<table" in html
+    assert "<th>Command</th>" in html
+
+
+def test_commands_are_never_wrapped_in_markup():
+    """Telegram autolinks a bare /command, and a code or bold span kills that."""
+
+    import re
+
+    docs = [start_doc("Augy"), favourites_doc([])]
+    for doc in docs:
+        html = doc.to_html()
+        assert "<code>" not in html
+        wrapped = re.findall(r"<(?:code|b)>\s*/[a-z]+\s*</(?:code|b)>", html)
+        assert not wrapped, wrapped
 
 
 def test_forecast_view_reports_rain_days():

@@ -24,7 +24,7 @@ from .feeds import (
     Quake,
     Warning,
 )
-from .richtext import RichDoc, b, code, i, link
+from .richtext import RichDoc, b, i, link
 from .timeutils import (
     ago,
     describe_days,
@@ -89,38 +89,36 @@ def start_doc(first_name: str = "") -> RichDoc:
         "the open data.gov.my feeds."
     )
 
-    doc.heading("What you can ask for", level=3)
+    doc.heading("Quickest way to start", level=3)
     doc.bullets(
         [
-            f"{code('/weather')} gives the seven day forecast for any town.",
-            f"{code('/warnings')} lists the weather warnings currently in force.",
-            f"{code('/quake')} shows recent earthquakes felt in and around Malaysia.",
-            f"{code('/flood')} reports river gauge levels and which are rising.",
-            f"{code('/nearby')} finds the closest forecast area and river gauges "
-            "to a location you share.",
+            "Send a town name and the search runs automatically.",
+            "Share your location and the nearest forecast area and river "
+            "gauges come back sorted by distance.",
+            "Save the places you follow with /fav, then let the bot tell you "
+            "when a warning is issued or a river rises.",
         ]
     )
 
-    doc.heading("Keeping track", level=3)
-    doc.bullets(
+    # Commands are left as plain text rather than wrapped in <code>, which
+    # keeps Telegram's own command autolinking working so they stay tappable.
+    doc.heading("Commands", level=3)
+    doc.table(
+        ["Command", "What it does"],
         [
-            f"{code('/fav')} saves a town or a river gauge for quick access.",
-            f"{code('/unfav')} removes one you no longer want.",
-            f"{code('/sub')} turns on alerts for warnings, floods, quakes and "
-            "the morning digest.",
-            f"{code('/unsub')} turns those alerts off again.",
-            f"{code('/settings')} adjusts quiet hours, thresholds, digest time "
-            "and the clock format.",
-            f"{code('/about')} credits the data sources.",
-        ]
-    )
-
-    doc.heading("A shortcut", level=3)
-    doc.para(
-        "You do not have to use a command at all. Send a place name such as "
-        f"{code('Ipoh')} and the bot will search the forecast towns and river "
-        "gauges for you. Share your location and it will work out what is "
-        "closest."
+            ["/start", "This overview"],
+            ["/weather", "Seven day forecast for any town"],
+            ["/warnings", "Weather warnings currently in force"],
+            ["/quake", "Recent earthquakes in and around Malaysia"],
+            ["/flood", "River levels and which gauges are rising"],
+            ["/nearby", "Closest forecast and gauges to your location"],
+            ["/fav", "Save a town or river gauge to favourites"],
+            ["/unfav", "Remove something from favourites"],
+            ["/sub", "Turn alerts on"],
+            ["/unsub", "Turn alerts off"],
+            ["/settings", "Quiet hours, thresholds and preferences"],
+            ["/about", "Where the data comes from"],
+        ],
     )
     return doc
 
@@ -536,11 +534,8 @@ def favourites_doc(favourites: Sequence[Any]) -> RichDoc:
 
     if not favourites:
         doc.para(
-            "You have not saved anything yet. Look up a town with "
-            + code("/weather")
-            + " or a river gauge with "
-            + code("/flood")
-            + ", then use the Save button on the result."
+            "You have not saved anything yet. Look up a town with /weather or "
+            "a river gauge with /flood, then use the Save button on the result."
         )
         return doc
 
@@ -556,7 +551,7 @@ def favourites_doc(favourites: Sequence[Any]) -> RichDoc:
             [f"{b(f['label'])}{(', ' + f['detail']) if f['detail'] else ''}" for f in gauges]
         )
 
-    doc.para("Choose one below to open it, or use " + code("/unfav") + " to remove one.")
+    doc.para("Choose one below to open it, or use /unfav to remove one.")
     return doc
 
 
