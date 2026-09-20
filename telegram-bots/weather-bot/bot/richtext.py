@@ -30,6 +30,7 @@ import re
 from typing import Any, Iterable, Sequence
 
 import httpx
+from telethon.errors import MessageNotModifiedError
 from telethon.tl.custom import Button
 
 log = logging.getLogger(__name__)
@@ -39,6 +40,12 @@ API_ROOT = "https://api.telegram.org"
 # Telegram caps rich messages far above the classic 4096 limit.
 RICH_TEXT_LIMIT = 32768
 CLASSIC_TEXT_LIMIT = 4096
+
+# `edit` returns this when the edit succeeded but Telegram handed back no
+# message: either the content was already identical, or the API answered with
+# a bare `true`. Callers must treat it as success, because only None means the
+# edit failed and the content still needs sending.
+EDIT_UNCHANGED = object()
 
 
 def esc(value: Any) -> str:
@@ -419,7 +426,12 @@ class RichSender:
         doc: RichDoc | str,
         buttons: Any = None,
     ) -> Any:
-        """Edit an existing message, keeping rich formatting when possible."""
+        """Edit an existing message, keeping rich formatting when possible.
+
+        Returns the edited message, or `EDIT_UNCHANGED` when the edit landed
+        but produced no message. `None` means the edit genuinely failed, and
+        the caller should send the content instead.
+        """
 
         rich_html = doc.to_html() if isinstance(doc, RichDoc) else str(doc)
 
@@ -436,17 +448,23 @@ class RichSender:
             try:
                 result = await self._post("editMessageText", payload)
                 if result.get("ok"):
-                    return result.get("result")
+                    # A successful edit can still answer with `True` rather
+                    # than a message, so never hand back None on success: the
+                    # caller reads None as "the edit failed, send instead".
+                    return result.get("result") or EDIT_UNCHANGED
                 description = str(result.get("description", ""))
                 if "message is not modified" in description.lower():
-                    return None
+                    # Already showing exactly this, which is a success. Sending
+                    # a duplicate here is precisely what the user would see as
+                    # a new message on every repeated tap.
+                    return EDIT_UNCHANGED
                 if _is_unsupported(description):
                     self.rich_supported = False
             except httpx.HTTPError as exc:
                 log.warning("editMessageText transport error: %s", exc)
 
         try:
-            return await client.edit_message(
+            edited = await client.edit_message(
                 chat_id,
                 message_id,
                 _truncate(to_classic_html(rich_html), CLASSIC_TEXT_LIMIT),
@@ -454,6 +472,10 @@ class RichSender:
                 buttons=buttons,
                 link_preview=False,
             )
+            return edited if edited is not None else EDIT_UNCHANGED
+        except MessageNotModifiedError:
+            # The content already matches, so the screen is correct as it is.
+            return EDIT_UNCHANGED
         except Exception as exc:  # noqa: BLE001 - editing is always best effort
             log.debug("Classic edit failed: %s", exc)
             return None

@@ -154,17 +154,24 @@ class WeatherBot:
 
         assert self.client is not None
 
-        message = getattr(event, "message", None)
-        is_callback = isinstance(event, events.CallbackQuery.Event)
+        # A callback event exposes `message_id` directly. It has no `message`
+        # attribute at all, so reaching for one silently sent a new message on
+        # every button press instead of editing the one the button sits on.
+        message_id = getattr(event, "message_id", None)
 
-        if is_callback and message is not None:
-            return await self.rich.edit(
+        if isinstance(event, events.CallbackQuery.Event) and message_id is not None:
+            edited = await self.rich.edit(
                 self.client,
                 await event.get_chat(),
-                message.id,
+                message_id,
                 doc,
                 buttons=buttons,
             )
+            # An edit can legitimately fail: the message may be too old, or
+            # Telegram may reject the new content. Sending then keeps the
+            # button working rather than leaving the user with no reply.
+            if edited is not None:
+                return edited
 
         return await self.rich.send(self.client, await event.get_chat(), doc, buttons=buttons)
 

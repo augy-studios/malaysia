@@ -12,7 +12,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from telethon import events
+
 from bot.database import Database
+from bot.main import WeatherBot
 from bot.feeds import (
     FLOOD_RANK,
     normalise,
@@ -706,3 +709,89 @@ async def test_last_location_column_is_added_to_an_existing_database(tmp_path):
         assert (await database.get_user(7))["last_location"] == "St042"
     finally:
         await database.close()
+
+
+# ---------------------------------------------------------------------------
+# Rendering: button presses must edit, never send
+# ---------------------------------------------------------------------------
+
+
+class _RecordingRich:
+    """Stands in for RichSender, recording which path a render took."""
+
+    def __init__(self, edit_result: object = "edited") -> None:
+        self.edit_result = edit_result
+        self.calls: list[str] = []
+        self.edited_ids: list[int] = []
+        self.rich_supported = True
+
+    async def edit(self, client, chat_id, message_id, doc, buttons=None):
+        self.calls.append("edit")
+        self.edited_ids.append(message_id)
+        return self.edit_result
+
+    async def send(self, client, chat_id, doc, buttons=None, reply_to=None, silent=False):
+        self.calls.append("send")
+        return "sent"
+
+
+class _FakeCallbackEvent(events.CallbackQuery.Event):
+    """A callback event shaped the way Telethon really builds one.
+
+    Telethon's CallbackQuery.Event has no `message` attribute, only
+    `message_id`. Subclassing the real class rather than inventing a stub is
+    what makes this test able to catch that.
+    """
+
+    def __init__(self, message_id: int = 4242) -> None:
+        # `message_id` is a read-only property reading this field, so the fake
+        # sets what the real class sets and inherits the real accessor.
+        self._message_id = message_id
+
+    async def get_chat(self):
+        return 99
+
+
+def _render_with(rich, event):
+    bot = WeatherBot.__new__(WeatherBot)
+    bot.client = object()
+    bot.rich = rich
+    return asyncio.get_event_loop_policy().new_event_loop().run_until_complete(
+        bot._render(event, RichDoc().para("hello"), None)
+    )
+
+
+def test_a_button_press_edits_the_message_it_sits_on():
+    """The regression this guards: every tap used to send a new message.
+
+    `getattr(event, "message", None)` is always None on a callback query, so
+    the edit branch never ran and each press appended another card.
+    """
+
+    rich = _RecordingRich()
+    result = _render_with(rich, _FakeCallbackEvent(message_id=777))
+
+    assert rich.calls == ["edit"], "a button press must not send a new message"
+    assert rich.edited_ids == [777]
+    assert result == "edited"
+
+
+def test_an_unmodified_edit_does_not_send_a_duplicate():
+    """Re-tapping the same button leaves the screen as it is."""
+
+    from bot.richtext import EDIT_UNCHANGED
+
+    rich = _RecordingRich(edit_result=EDIT_UNCHANGED)
+    _render_with(rich, _FakeCallbackEvent())
+
+    assert rich.calls == ["edit"], "an unchanged edit already succeeded"
+
+
+def test_a_failed_edit_still_reaches_the_user():
+    """A message too old to edit must not swallow the reply."""
+
+    rich = _RecordingRich(edit_result=None)
+    result = _render_with(rich, _FakeCallbackEvent())
+
+    assert rich.calls == ["edit", "send"]
+    assert result == "sent"
