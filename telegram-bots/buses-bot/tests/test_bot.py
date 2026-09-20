@@ -399,6 +399,94 @@ async def test_callbacks_persist_across_reconnect(db, tmp_path):
         await reopened.close()
 
 
+# ---------------------------------------------------------------------------
+# Editing in place
+# ---------------------------------------------------------------------------
+
+
+class _FakeEvent:
+    """The two attributes reply_to_button reads off a CallbackQuery."""
+
+    def __init__(self) -> None:
+        self.chat_id = 42
+        self.message_id = 7
+
+
+def _bot_with(edit_result):
+    """A BusesBot with its send/edit stubbed, recording what each was called with."""
+
+    from bot.main import BusesBot
+
+    bot = BusesBot.__new__(BusesBot)  # no Telegram connection wanted here
+    calls: dict[str, list] = {"edit": [], "send": []}
+
+    async def fake_edit(chat_id, message_id, doc, buttons=None):
+        calls["edit"].append((chat_id, message_id, buttons))
+        return edit_result
+
+    async def fake_send(chat_id, doc, buttons=None, reply_to=None):
+        calls["send"].append((chat_id, buttons))
+        return "sent"
+
+    bot.edit = fake_edit
+    bot.send = fake_send
+    return bot, calls
+
+
+@pytest.mark.asyncio
+async def test_button_reply_edits_the_original_message():
+    """A tapped button must replace its own message, not add another one."""
+
+    bot, calls = _bot_with(edit_result="edited")
+
+    result = await bot.reply_to_button(_FakeEvent(), RichDoc().text("hi"), buttons=[])
+
+    assert result == "edited"
+    assert calls["edit"] == [(42, 7, [])]
+    assert calls["send"] == []
+
+
+@pytest.mark.asyncio
+async def test_button_reply_falls_back_to_sending():
+    """A message too old to edit still has to get its answer through."""
+
+    bot, calls = _bot_with(edit_result=None)
+
+    result = await bot.reply_to_button(_FakeEvent(), RichDoc().text("hi"))
+
+    assert result == "sent"
+    assert len(calls["edit"]) == 1
+    assert calls["send"] == [(42, None)]
+
+
+@pytest.mark.asyncio
+async def test_edit_without_buttons_clears_the_old_keyboard():
+    """An omitted reply_markup leaves the previous keyboard on the message.
+
+    Editing to a button-less view therefore has to send an empty keyboard
+    explicitly, or the user is left tapping buttons for the old content.
+    """
+
+    from bot.richtext import RichSender
+
+    sender = RichSender("token")
+    posted: dict = {}
+
+    async def fake_post(method, payload):
+        posted["method"] = method
+        posted["payload"] = payload
+        return {"ok": True, "result": {"message_id": 7}}
+
+    sender._post = fake_post
+    try:
+        await sender.edit(None, 42, 7, RichDoc().text("hi"))
+    finally:
+        await sender.close()
+
+    assert posted["method"] == "editMessageText"
+    assert posted["payload"]["reply_markup"] == {"inline_keyboard": []}
+
+
 @pytest.mark.asyncio
 async def test_scheduled_jobs_deduplicate(db):
     await db.ensure_user(1, 1)

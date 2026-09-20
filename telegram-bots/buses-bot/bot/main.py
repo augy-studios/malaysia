@@ -81,6 +81,22 @@ class BusesBot:
             log.debug("Edit failed: %s", exc)
             return None
 
+    async def reply_to_button(self, event: Any, doc: RichDoc,
+                              buttons: Any = None) -> Any:
+        """Replace the message a button lives on, rather than sending a new one.
+
+        Every callback answers in place so a session stays one message the user
+        can scroll back to, instead of a column of near-identical cards. An edit
+        can still legitimately fail - the message may be too old to edit, or
+        Telegram may reject the new content - so a failed edit falls back to
+        sending, which keeps the button working either way.
+        """
+
+        edited = await self.edit(event.chat_id, event.message_id, doc, buttons=buttons)
+        if edited is None:
+            return await self.send(event.chat_id, doc, buttons=buttons)
+        return edited
+
     # -- lifecycle --------------------------------------------------------
 
     async def start(self) -> None:
@@ -441,7 +457,7 @@ class BusesBot:
                 favourite_id=favourite["id"] if favourite else None,
             )
             await event.answer()
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "stop:live":
@@ -474,7 +490,17 @@ class BusesBot:
             else:
                 doc = views.live_doc(operator, vehicles, feed)
 
-            await self.send(event.chat_id, doc)
+            # Editing in place would otherwise strand the user on a view with
+            # no keyboard, so carry a way back to the stop.
+            buttons = [
+                [
+                    await views.cb(self.db, "🔄 Refresh", "stop:live",
+                                   {"op": operator, "stop": stop_id}, user_id),
+                    await views.cb(self.db, "◀ Back to stop", "stop:view",
+                                   {"op": operator, "stop": stop_id}, user_id),
+                ]
+            ]
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         # -- routes -------------------------------------------------------
@@ -489,7 +515,7 @@ class BusesBot:
                 self.db, feed, operator, route, user_id, page=int(payload.get("p", 0))
             )
             await event.answer()
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "route:trips":
@@ -504,7 +530,12 @@ class BusesBot:
                 time_format=user["time_format"], page=int(payload.get("p", 0)),
             )
             await event.answer()
-            await self.send(event.chat_id, doc, buttons=buttons or None)
+            buttons = list(buttons)
+            buttons.append(
+                [await views.cb(self.db, "◀ Back to route", "route:view",
+                                {"op": operator, "route": route_id}, user_id)]
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "routes:list":
@@ -541,7 +572,7 @@ class BusesBot:
             if nav:
                 buttons.append(nav)
 
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         # -- trips --------------------------------------------------------
@@ -549,9 +580,18 @@ class BusesBot:
             operator, trip_id = payload["op"], payload["trip"]
             feed = await self.gtfs.get_feed(operator)
             await event.answer()
-            await self.send(
-                event.chat_id,
+
+            trip = feed.trips.get(trip_id)
+            buttons = []
+            if trip is not None:
+                buttons.append(
+                    [await views.cb(self.db, "◀ Back to route", "route:trips",
+                                    {"op": operator, "route": trip.route_id}, user_id)]
+                )
+            await self.reply_to_button(
+                event,
                 views.trip_doc(feed, operator, trip_id, user["time_format"]),
+                buttons=buttons or None,
             )
             return
 
@@ -568,8 +608,9 @@ class BusesBot:
             buttons = [
                 [await views.cb(self.db, "🔄 Refresh", "live:show", {"op": operator}, user_id)]
             ]
-            await self.send(event.chat_id, views.live_doc(operator, vehicles, feed),
-                            buttons=buttons)
+            await self.reply_to_button(
+                event, views.live_doc(operator, vehicles, feed), buttons=buttons
+            )
             return
 
         # -- favourites ---------------------------------------------------
@@ -586,13 +627,17 @@ class BusesBot:
             )
             await event.answer("Saved to favourites" if added else "Already in your favourites")
 
-            if added:
-                doc = RichDoc().heading("Favourite saved", 3)
-                doc.para(
-                    f"{b(stop.stop_name)} is now in your favourites. Turn on "
-                    "reminders for it with /sub."
-                )
-                await self.send(event.chat_id, doc)
+            # Re-render the stop in place so the star flips to "Remove". The
+            # toast already confirms the save, so a separate card would only
+            # bury the timetable the user was reading.
+            favourite = await self._favourite_for_stop(user_id, operator, stop_id)
+            doc, buttons = await views.stop_doc(
+                self.db, feed, operator, stop, user_id,
+                time_format=user["time_format"],
+                is_favourite=favourite is not None,
+                favourite_id=favourite["id"] if favourite else None,
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "fav:route":
@@ -621,7 +666,11 @@ class BusesBot:
                     [await views.cb(self.db, f"☆ {label}", "fav:addroute",
                                     {"op": operator, "stop": stop_id, "route": route_id}, user_id)]
                 )
-            await self.send(event.chat_id, doc, buttons=buttons)
+            buttons.append(
+                [await views.cb(self.db, "◀ Back to route", "route:view",
+                                {"op": operator, "route": route_id}, user_id)]
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "fav:addroute":
@@ -637,6 +686,24 @@ class BusesBot:
                 user_id, operator, stop_id, stop.stop_name, route_id, route.display
             )
             await event.answer("Saved to favourites" if added else "Already in your favourites")
+
+            doc = RichDoc().heading("Favourite saved", 3)
+            doc.para(
+                f"{b(stop.stop_name)} on {b(route.display)} is in your favourites. "
+                "Turn on reminders for it with /sub."
+            )
+            await self.reply_to_button(
+                event,
+                doc,
+                buttons=[
+                    [
+                        await views.cb(self.db, "🚏 View stop", "stop:view",
+                                       {"op": operator, "stop": stop_id}, user_id),
+                        await views.cb(self.db, "◀ Back to route", "route:view",
+                                       {"op": operator, "route": route_id}, user_id),
+                    ]
+                ],
+            )
             return
 
         if action == "fav:remove":
@@ -647,7 +714,7 @@ class BusesBot:
                 doc, buttons = await views.favourites_doc(
                     self.db, favourites, user_id, for_removal=True
                 )
-                await self.send(event.chat_id, doc, buttons=buttons or None)
+                await self.reply_to_button(event, doc, buttons=buttons or None)
             return
 
         # -- subscriptions ------------------------------------------------
@@ -681,30 +748,31 @@ class BusesBot:
             doc, buttons = await views.subscriptions_doc(
                 self.db, subs, user_id, user["lead_minutes"], user["digest_time"]
             )
-            await self.edit(event.chat_id, event.message_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         # -- settings -----------------------------------------------------
         if action == "set:operator":
             await event.answer()
             buttons = await views.operator_picker(self.db, "set:operator:pick", user_id)
+            buttons.append([await views.cb(self.db, "◀ Back", "set:back", {}, user_id)])
             doc = RichDoc().heading("Default operator", 3).para(
                 "This is the operator used when a command does not name one."
             )
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "set:operator:pick":
             await self.db.set_pref(user_id, "operator", payload["op"])
             await event.answer(f"Default set to {operator_label(payload['op'])}")
-            await self._resend_settings(event, user_id)
+            await self._show_settings(event, user_id)
             return
 
         if action == "set:timefmt":
             new_format = "24h" if user["time_format"] == "12h" else "12h"
             await self.db.set_pref(user_id, "time_format", new_format)
             await event.answer(f"Clock set to {'24 hour' if new_format == '24h' else '12 hour'}")
-            await self._resend_settings(event, user_id)
+            await self._show_settings(event, user_id)
             return
 
         if action == "set:lead":
@@ -720,24 +788,25 @@ class BusesBot:
                                    {"m": minutes}, user_id)
                     for minutes in (20, 30, 45)
                 ],
+                [await views.cb(self.db, "◀ Back", "set:back", {}, user_id)],
             ]
             doc = RichDoc().heading("Reminder lead time", 3).para(
                 "How far ahead of each departure should a reminder arrive?"
             )
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "set:lead:pick":
             await self.db.set_pref(user_id, "lead_minutes", int(payload["m"]))
             await event.answer(f"Reminders will arrive {payload['m']} minutes ahead")
-            await self._resend_settings(event, user_id)
+            await self._show_settings(event, user_id)
             return
 
         if action == "set:quiet":
             enabled = not bool(user["quiet_enabled"])
             await self.db.set_pref(user_id, "quiet_enabled", 1 if enabled else 0)
             await event.answer("Quiet hours on" if enabled else "Quiet hours off")
-            await self._resend_settings(event, user_id)
+            await self._show_settings(event, user_id)
             return
 
         if action == "set:digest":
@@ -751,17 +820,18 @@ class BusesBot:
                     await views.cb(self.db, when, "set:digest:pick", {"t": when}, user_id)
                     for when in ("07:30", "08:00", "09:00")
                 ],
+                [await views.cb(self.db, "◀ Back", "set:back", {}, user_id)],
             ]
             doc = RichDoc().heading("Daily digest time", 3).para(
                 "When should the morning summary arrive? All times are Malaysia time."
             )
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "set:digest:pick":
             await self.db.set_pref(user_id, "digest_time", payload["t"])
             await event.answer(f"Digest set for {payload['t']}")
-            await self._resend_settings(event, user_id)
+            await self._show_settings(event, user_id)
             return
 
         if action == "set:wipe":
@@ -778,7 +848,7 @@ class BusesBot:
                 "This removes your favourites, notification settings and "
                 "preferences. It cannot be undone."
             )
-            await self.send(event.chat_id, doc, buttons=buttons)
+            await self.reply_to_button(event, doc, buttons=buttons)
             return
 
         if action == "set:wipe:confirm":
@@ -790,21 +860,31 @@ class BusesBot:
                 "Everything stored about you is gone. Send /start whenever "
                 "you want to begin again."
             )
-            await self.send(event.chat_id, doc)
+            # No keyboard here on purpose: every button would point at data
+            # that has just been deleted.
+            await self.reply_to_button(event, doc)
             return
 
         if action == "set:wipe:cancel":
             await event.answer("Nothing was deleted")
+            await self._show_settings(event, user_id)
+            return
+
+        if action == "set:back":
+            await event.answer()
+            await self._show_settings(event, user_id)
             return
 
         await event.answer("That action is not available any more.", alert=True)
 
-    async def _resend_settings(self, event: Any, user_id: int) -> None:
+    async def _show_settings(self, event: Any, user_id: int) -> None:
+        """Re-render settings over the message the button was tapped on."""
+
         user = await self.db.get_user(user_id)
         if user is None:
             return
         doc, buttons = await views.settings_doc(self.db, user, user_id)
-        await self.send(event.chat_id, doc, buttons=buttons)
+        await self.reply_to_button(event, doc, buttons=buttons)
 
 
 # ---------------------------------------------------------------------------

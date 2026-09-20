@@ -426,9 +426,10 @@ class RichSender:
                 "message_id": message_id,
                 "rich_message": {"html": _truncate(rich_html, RICH_TEXT_LIMIT)},
             }
-            markup = _buttons_to_markup(buttons)
-            if markup:
-                payload["reply_markup"] = markup
+            # An edit that drops the keyboard has to say so explicitly: an
+            # absent reply_markup leaves the old buttons in place, which would
+            # strand a stale keyboard on top of the new content.
+            payload["reply_markup"] = _buttons_to_markup(buttons) or {"inline_keyboard": []}
             try:
                 result = await self._post("editMessageText", payload)
                 if result.get("ok"):
