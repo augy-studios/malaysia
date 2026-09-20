@@ -24,7 +24,7 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# Logs
+# Logs, including anything piped out of the bot with tee
 *.log
 logs/
 

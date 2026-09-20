@@ -98,21 +98,25 @@ DONATION_URL=https://your-donation-link
 Then start it:
 
 ```bash
-chmod +x run.sh
-./run.sh
+.venv/bin/python -m bot.main
 ```
 
+Run it from the project root, the directory holding `.env`, since that is where the bot looks for its configuration and its `data/` folder.
+
 On first run the bot downloads roughly 12 MB of GTFS bundles and caches them. That takes a few seconds per operator. It happens in the background, so the bot answers commands immediately and search improves as the feeds land.
+
+Stop it with `Ctrl+C`. Shutdown is handled cleanly: the scheduler loops are cancelled, pending work stays in SQLite, and the next start picks it up.
 
 ---
 
 ## Running under tmux
 
-`run.sh` restarts the bot if it crashes, so pair it with a tmux session that outlives your SSH connection.
+Start a tmux session so the bot outlives your SSH connection.
 
 ```bash
-tmux new -s buses          # start a named session
-./run.sh                   # inside the session
+tmux new -s buses                        # start a named session
+cd ~/malaysia/telegram-bots/buses-bot
+.venv/bin/python -m bot.main
 # Ctrl+B then D to detach and leave it running
 ```
 
@@ -123,21 +127,21 @@ tmux attach -t buses       # reattach
 tmux ls                    # list sessions
 ```
 
-To stop the bot, attach to the session and press `Ctrl+C`. `run.sh` treats a clean exit as intentional and does not restart.
+| Keys | What they do |
+| --- | --- |
+| `Ctrl+B` then `D` | Detach, leaving the bot running |
+| `Ctrl+B` then `[` | Scroll back through the log, `q` to exit |
+| `Ctrl+C` | Stop the bot (while attached) |
 
-To have the session survive a reboot, add this to the crontab (`crontab -e`):
+Nothing restarts the bot automatically, which keeps failures visible: if it exits, the reason is sitting in the tmux scrollback rather than buried under a wrapper looping over the same error.
 
-```cron
-@reboot tmux new-session -d -s buses -c /path/to/buses-bot './run.sh'
-```
-
-If you would rather use systemd than tmux, [SETUP.md](SETUP.md) has a unit file.
+Being offline for a while costs nothing. Pending notifications live in SQLite rather than in memory, so the next start resumes from where it stopped. Reminders whose moment passed while the bot was down are dropped rather than delivered late.
 
 ---
 
 ## How it works
 
-```
+```text
 bot/
 ├── config.py      Environment loading and validation
 ├── database.py    SQLite: users, favourites, subscriptions, jobs, buttons, cache
