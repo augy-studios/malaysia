@@ -22,7 +22,7 @@ from telethon.errors import (
 from .config import ConfigError, Settings, load_settings
 from .database import Database
 from .gtfs import ALL_OPERATORS, GTFSManager, operator_label
-from .richtext import Button, RichDoc, RichSender, b, code, esc, i
+from .richtext import RichDoc, RichSender, b, esc, i
 from .scheduler import Scheduler
 from . import views
 from .timeutils import now_myt
@@ -232,11 +232,11 @@ class BusesBot:
             doc.para(
                 f"All {b(str(removed))} of your notification settings have been "
                 f"switched off. Your favourites are untouched, so you can turn "
-                f"notifications back on any time with {code('/sub')}."
+                "notifications back on any time with /sub."
             )
         else:
             doc.heading("Nothing to switch off", 3)
-            doc.para(f"You had no notifications enabled. Use {code('/sub')} to set them up.")
+            doc.para("You had no notifications enabled. Use /sub to set them up.")
 
         await self.send(event.chat_id, doc)
         raise events.StopPropagation
@@ -264,8 +264,7 @@ class BusesBot:
 
         buttons = await views.operator_picker(self.db, "routes:list", user["user_id"])
         doc = RichDoc().heading("Browse routes", 3).para(
-            "Pick an operator, or send a route number directly such as "
-            f"{code('/routes 780')}."
+            "Pick an operator, or send a route number directly such as /routes 780."
         )
         await self.send(event.chat_id, doc, buttons=buttons)
         raise events.StopPropagation
@@ -285,8 +284,8 @@ class BusesBot:
         )
         doc.bullets(
             [
-                f"Example: {code('Pasar Seni')}",
-                f"Example: {code('/stops KLCC')}",
+                f"Example: {b('Pasar Seni')}",
+                "Example: /stops KLCC",
             ]
         )
         await self.send(event.chat_id, doc)
@@ -377,7 +376,7 @@ class BusesBot:
             if command in KNOWN_COMMANDS:
                 return  # a dedicated handler already dealt with it
             doc = RichDoc().heading("Unknown command", 3).para(
-                f"That command is not recognised. Send {code('/start')} to see "
+                "That command is not recognised. Send /start to see "
                 "everything on offer, or just send a stop name to search."
             )
             await self.send(event.chat_id, doc)
@@ -591,7 +590,7 @@ class BusesBot:
                 doc = RichDoc().heading("Favourite saved", 3)
                 doc.para(
                     f"{b(stop.stop_name)} is now in your favourites. Turn on "
-                    f"reminders for it with {code('/sub')}."
+                    "reminders for it with /sub."
                 )
                 await self.send(event.chat_id, doc)
             return
@@ -788,7 +787,7 @@ class BusesBot:
             await self.db.remove_all_subscriptions(user_id)
             await event.answer("Your data has been deleted")
             doc = RichDoc().heading("Data deleted", 3).para(
-                f"Everything stored about you is gone. Send {code('/start')} whenever "
+                "Everything stored about you is gone. Send /start whenever "
                 "you want to begin again."
             )
             await self.send(event.chat_id, doc)

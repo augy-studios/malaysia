@@ -55,26 +55,27 @@ def start_doc(first_name: str, web_app_url: str, donation_url: str) -> RichDoc:
         [
             "Send any stop or route name and the search runs automatically.",
             "Share your location and the nearest stops come back sorted by distance.",
-            f"Save the stops you use with {code('/fav')}, then let the bot remind you before each bus.",
+            "Save the stops you use with /fav, then let the bot remind you before each bus.",
         ]
     )
 
+    # Commands are left as plain text rather than wrapped in <code>, which
+    # keeps Telegram's own command autolinking working so they stay tappable.
     doc.heading("Commands", 3)
-    doc.raw(
-        "<table bordered striped>"
-        "<thead><tr><th>Command</th><th>What it does</th></tr></thead>"
-        "<tbody>"
-        f"<tr><td>{code('/start')}</td><td>This overview</td></tr>"
-        f"<tr><td>{code('/fav')}</td><td>Add a stop or route to favourites</td></tr>"
-        f"<tr><td>{code('/unfav')}</td><td>Remove something from favourites</td></tr>"
-        f"<tr><td>{code('/sub')}</td><td>Turn on reminders, live alerts and digests</td></tr>"
-        f"<tr><td>{code('/unsub')}</td><td>Turn notifications back off</td></tr>"
-        f"<tr><td>{code('/live')}</td><td>Live bus positions with map links</td></tr>"
-        f"<tr><td>{code('/routes')}</td><td>Browse routes for an operator</td></tr>"
-        f"<tr><td>{code('/stops')}</td><td>Browse stops and their timetables</td></tr>"
-        f"<tr><td>{code('/trip')}</td><td>Follow one bus stop by stop</td></tr>"
-        f"<tr><td>{code('/settings')}</td><td>Operator, clock format, quiet hours</td></tr>"
-        "</tbody></table>"
+    doc.table(
+        ["Command", "What it does"],
+        [
+            ["/start", "This overview"],
+            ["/fav", "Add a stop or route to favourites"],
+            ["/unfav", "Remove something from favourites"],
+            ["/sub", "Turn on reminders, live alerts and digests"],
+            ["/unsub", "Turn notifications back off"],
+            ["/live", "Live bus positions with map links"],
+            ["/routes", "Browse routes for an operator"],
+            ["/stops", "Browse stops and their timetables"],
+            ["/trip", "Follow one bus stop by stop"],
+            ["/settings", "Operator, clock format, quiet hours"],
+        ],
     )
 
     doc.raw(
@@ -443,8 +444,7 @@ async def favourites_doc(
     if not favourites:
         doc.para(
             "You have not saved anything yet. Send a stop name, share your "
-            f"location, or browse with {code('/stops')}, then tap "
-            f"{b('Add to favourites')}."
+            f"location, or browse with /stops, then tap {b('Add to favourites')}."
         )
         return doc, []
 
