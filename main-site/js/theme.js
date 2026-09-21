@@ -299,6 +299,39 @@
     coffee.setAttribute('rel', 'noopener noreferrer');
   }
 
+  /* Every page except the home directory points at the Telegram bot covering
+     the same data. The page declares which one via data-bot; the label, icon
+     and href are filled in here so the five pages stay in step. */
+  const BOTS = {
+    weather: { username: 'malaysiaweather_bot', label: 'Weather Bot' },
+    trains: { username: 'malaysiatrains_bot', label: 'Trains Bot' },
+    buses: { username: 'malaysiabuses_bot', label: 'Buses Bot' }
+  };
+
+  function wireBotButton() {
+    const link = document.getElementById('botButton');
+    if (!link) return;
+
+    const bot = BOTS[link.dataset.bot];
+    if (!bot) {
+      link.remove();
+      return;
+    }
+
+    link.setAttribute('href', 'https://t.me/' + bot.username);
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    link.setAttribute('title', '@' + bot.username);
+    link.setAttribute('aria-label', bot.label + ' on Telegram, @' + bot.username +
+      ' (opens in a new tab)');
+
+    if (global.Icons && !link.dataset.iconSet) {
+      link.innerHTML = global.Icons.html('telegram', { size: 18 }) +
+        '<span class="btn-label">' + bot.label + '</span>';
+      link.dataset.iconSet = '1';
+    }
+  }
+
   initTheme();
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -309,6 +342,7 @@
     buildThemeModal();
     wireModals();
     wireCoffeeButton();
+    wireBotButton();
   });
 
   global.Theme = {

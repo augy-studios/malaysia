@@ -737,21 +737,6 @@ def quake_alert_doc(quake: Quake) -> RichDoc:
     return doc
 
 
-def feed_health_doc(stale: Sequence[tuple[str, str]]) -> RichDoc:
-    doc = RichDoc()
-    doc.heading("Data feed trouble", level=3)
-    doc.para(
-        "The bot has not been able to refresh the following feeds for some "
-        "time, so readings may be out of date."
-    )
-    doc.table(
-        ["Feed", "Reason"],
-        [[name.title(), reason] for name, reason in stale],
-    )
-    doc.para("Alerts resume automatically once data.gov.my responds again.")
-    return doc
-
-
 def stats_doc(stats: dict[str, Any]) -> RichDoc:
     doc = RichDoc()
     doc.heading("Bot statistics", level=2)
@@ -816,7 +801,6 @@ __all__ = [
     "warning_alert_doc",
     "flood_alert_doc",
     "quake_alert_doc",
-    "feed_health_doc",
     "stats_doc",
     "error_doc",
     "SUBSCRIPTION_LABELS",

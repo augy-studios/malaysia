@@ -31,7 +31,8 @@
     mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
     home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>',
     signal: '<line x1="4" y1="20" x2="4" y2="16"/><line x1="9" y1="20" x2="9" y2="12"/><line x1="14" y1="20" x2="14" y2="8"/><line x1="19" y1="20" x2="19" y2="4"/>',
-    bus: '<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M4 12h16"/><path d="M7 16v3"/><path d="M17 16v3"/><circle cx="8" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1" fill="currentColor" stroke="none"/><line x1="8" y1="7" x2="8" y2="9"/><line x1="16" y1="7" x2="16" y2="9"/>'
+    bus: '<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M4 12h16"/><path d="M7 16v3"/><path d="M17 16v3"/><circle cx="8" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1" fill="currentColor" stroke="none"/><line x1="8" y1="7" x2="8" y2="9"/><line x1="16" y1="7" x2="16" y2="9"/>',
+    telegram: '<path d="M21.5 4.3 2.9 11.2c-.8.3-.8 1.4 0 1.7l4.6 1.5 1.7 4.9c.2.7 1.1.8 1.6.3l2.4-2.4 4.4 3.2c.6.4 1.5.1 1.7-.7l3-14.2c.2-.8-.6-1.5-1.3-1.2z"/><path d="m7.5 14.4 11-7.6-6.6 8.1-.2 4"/>'
   };
 
   function html(name, opts) {

@@ -3,7 +3,7 @@
   browser compares this file byte for byte, so an unchanged version means no
   update is ever found and the update bar in js/update.js never shows.
 */
-const CACHE = "malaysia-boleh-v31";
+const CACHE = "malaysia-boleh-v32";
 const API_CACHE = "malaysia-boleh-api-v5";
 
 const ASSETS = [

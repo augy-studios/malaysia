@@ -554,18 +554,6 @@ class Database:
     async def feed_health(self) -> list[aiosqlite.Row]:
         return await self._fetchall("SELECT * FROM feed_health")
 
-    async def mark_feed_notified(self, feeds: Sequence[str]) -> None:
-        """Note that a feed's outage has been reported.
-
-        `record_feed_ok` clears the flag again, so one outage produces one
-        message rather than one per health check.
-        """
-
-        for feed in feeds:
-            await self._execute(
-                "UPDATE feed_health SET notified = 1 WHERE feed = ?", (feed,)
-            )
-
     # -- alert dedupe -----------------------------------------------------
 
     async def should_alert(self, user_id: int, event_key: str, cooldown: int) -> bool:

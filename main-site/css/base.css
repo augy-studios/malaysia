@@ -253,6 +253,18 @@ table {
   color: var(--brand-ink);
 }
 
+/* The topbar link to the page's Telegram bot. Tinted so it reads as the one
+   action on the page that leaves for somewhere else. */
+.btn-bot {
+  background: color-mix(in srgb, var(--brand) 45%, var(--surface-strong));
+  border-color: color-mix(in srgb, var(--brand-ink) 35%, var(--surface-border));
+  color: var(--ink);
+}
+
+.btn-bot .icon {
+  color: var(--brand-ink);
+}
+
 /* -- Icon button (theme trigger, modal close) -- */
 
 .icon-btn {
@@ -683,6 +695,7 @@ body.modal-open {
 
 :root[data-mode="dark"] ::selection,
 :root[data-mode="dark"] .page-card-icon,
+:root[data-mode="dark"] .btn-bot,
 :root[data-mode="dark"] .mode-btn.active {
   background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
 }

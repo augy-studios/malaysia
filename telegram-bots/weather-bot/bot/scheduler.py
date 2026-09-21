@@ -23,7 +23,6 @@ from .feeds import FLOOD_RANK, FeedError, FloodStation, Quake, Warning
 from .timeutils import in_quiet_hours, now_myt, parse_clock, parse_days
 from .views import (
     digest_doc,
-    feed_health_doc,
     flood_alert_doc,
     quake_alert_doc,
     warning_alert_doc,
@@ -429,36 +428,26 @@ class Scheduler:
                 return
 
     async def _check_feed_health(self) -> None:
-        """Tell the administrators when a feed has gone quiet.
+        """Record in the log when a feed has gone quiet.
 
-        Ordinary users are not told, because there is nothing for them to do
-        about it and the bot already says when a reading is stale.
+        Nobody is messaged about this, admins included. A feed outage is not
+        something the reader can act on, the bot already marks a stale reading
+        where it is shown, and the notice went out worded in a way that left
+        people thinking their own alerts had broken.
         """
-
-        if not self.settings.admin_user_ids:
-            return
 
         now = int(time.time())
         stale: list[tuple[str, str]] = []
         for row in await self.db.feed_health():
-            if row["notified"]:
-                continue
             last_ok = row["last_ok_at"] or 0
             if last_ok and now - last_ok > FEED_STALE_AFTER:
                 stale.append((row["feed"], row["last_error"] or "no recent success"))
 
-        if not stale:
-            return
-
-        doc = feed_health_doc(stale)
-        for admin_id in self.settings.admin_user_ids:
-            user = await self.db.get_user(admin_id)
-            if user is not None:
-                await self.bot.send(user["chat_id"], doc)
-
-        # Each outage is reported once. The flag is cleared by record_feed_ok,
-        # so the next failure after a recovery is reported again.
-        await self.db.mark_feed_notified([feed for feed, _ in stale])
+        if stale:
+            log.warning(
+                "Stale feeds: %s",
+                ", ".join(f"{feed} ({reason})" for feed, reason in stale),
+            )
 
 
 def _epoch_of(quake: Quake) -> float:
