@@ -835,12 +835,34 @@ class BusesBot:
         if action == "fav:remove":
             removed = await self.db.remove_favourite(user_id, int(payload["fid"]))
             await event.answer("Removed" if removed else "That favourite was already gone")
-            if removed:
-                favourites = await self.db.list_favourites(user_id)
-                doc, buttons = await views.favourites_doc(
-                    self.db, favourites, user_id, for_removal=True
-                )
-                await self.reply_to_button(event, doc, buttons=buttons or None)
+            if not removed:
+                return
+
+            # Tapped on a stop card: redraw that card so the star flips back
+            # to "Add". Only the removal list sends the user to the list.
+            if payload.get("stop"):
+                operator, stop_id = payload["op"], payload["stop"]
+                feed = await self.gtfs.get_feed(operator)
+                stop = feed.stops.get(stop_id)
+                if stop is not None:
+                    favourite = await self._favourite_for_stop(
+                        user_id, operator, stop_id
+                    )
+                    doc, buttons = await views.stop_doc(
+                        self.db, feed, operator, stop, user_id,
+                        time_format=user["time_format"],
+                        is_favourite=favourite is not None,
+                        favourite_id=favourite["id"] if favourite else None,
+                        back=self._stop_back_target(payload),
+                    )
+                    await self.reply_to_button(event, doc, buttons=buttons)
+                    return
+
+            favourites = await self.db.list_favourites(user_id)
+            doc, buttons = await views.favourites_doc(
+                self.db, favourites, user_id, for_removal=True
+            )
+            await self.reply_to_button(event, doc, buttons=buttons or None)
             return
 
         # -- subscriptions ------------------------------------------------

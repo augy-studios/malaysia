@@ -527,10 +527,15 @@ class WeatherBot:
 
         top: list[Any] = []
         if saved:
+            # The location travels with the removal so the handler can reopen
+            # this card. Only the removal list sends the user to the list.
             top.append(
                 Button.inline(
                     "Remove from favourites",
-                    await self._cb("unfav_do", f=int(saved["id"])),
+                    await self._cb(
+                        "unfav_do", f=int(saved["id"]), k="location",
+                        r=location.location_id,
+                    ),
                 )
             )
         else:
@@ -663,10 +668,15 @@ class WeatherBot:
 
         top: list[Any] = []
         if saved:
+            # The station travels with the removal so the handler can reopen
+            # this card. Only the removal list sends the user to the list.
             top.append(
                 Button.inline(
                     "Remove from favourites",
-                    await self._cb("unfav_do", f=int(saved["id"])),
+                    await self._cb(
+                        "unfav_do", f=int(saved["id"]), k="station",
+                        r=station.station_id,
+                    ),
                 )
             )
         else:
@@ -987,6 +997,21 @@ class WeatherBot:
             await event.answer(
                 "Removed from your favourites." if removed else "That was not saved."
             )
+
+            # Tapped on a card: reopen it so the button flips back to "Save".
+            # Only the removal list sends the user to the list.
+            kind, ref = str(payload.get("k", "")), str(payload.get("r", ""))
+            if kind == "location":
+                location = await self.feeds.location_by_id(ref)
+                if location is not None:
+                    await self._open_location(event, location)
+                    return
+            elif kind == "station":
+                station = await self.feeds.station_by_id(ref)
+                if station is not None:
+                    await self._open_station(event, station)
+                    return
+
             await self._show_favourites(event)
 
         elif action == "subs":
