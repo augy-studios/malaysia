@@ -834,7 +834,14 @@ def test_stop_back_target_follows_where_the_user_came_from():
         None, {"op": "ktmb", "from": "search", "q": "sentral"}
     )
     assert action == "search:again"
-    assert payload == {"q": "sentral"}
+    # Page numbers ride along so Back lands on the page the user left; a
+    # payload without them starts at the first page.
+    assert payload == {"q": "sentral", "sp": 0, "rp": 0}
+
+    _label, action, payload = resolve(
+        None, {"op": "ktmb", "from": "search", "q": "sentral", "sp": 3, "rp": 1}
+    )
+    assert payload == {"q": "sentral", "sp": 3, "rp": 1}
 
 
 def test_stop_back_target_ignores_an_incomplete_origin():
@@ -846,3 +853,48 @@ def test_stop_back_target_ignores_an_incomplete_origin():
 
     assert resolve(None, {"op": "ktmb", "from": "route"}) is None
     assert resolve(None, {"op": "ktmb", "from": "search"}) is None
+
+
+def test_paging_keeps_a_stale_page_inside_the_list():
+    """A page number outliving the list it came from must still render."""
+
+    from bot.views import PAGE_SIZE, clamp_page, page_slice
+
+    items = list(range(13))
+
+    assert clamp_page(0, len(items)) == 0
+    assert list(page_slice(items, 0)) == items[:PAGE_SIZE]
+    assert list(page_slice(items, 2)) == [10, 11, 12]
+
+    # Tapping "Older" on a list that has since shrunk lands on the last page
+    # rather than an empty screen.
+    assert clamp_page(99, len(items)) == 2
+    assert clamp_page(-1, len(items)) == 0
+    assert clamp_page(3, 0) == 0
+    assert list(page_slice([], 0)) == []
+
+    # A list that divides exactly has no trailing empty page.
+    assert clamp_page(2, 10) == 1
+
+
+@pytest.mark.asyncio
+async def test_page_row_appears_only_when_a_list_overflows(db):
+    from bot import views
+
+    assert await views.page_row(db, 1, "menu:favourites", {}, 0, 3) == []
+    assert await views.page_row(db, 1, "menu:favourites", {}, 0, 5) == []
+
+    first = await views.page_row(db, 1, "menu:favourites", {}, 0, 12)
+    assert len(first[0]) == 2  # counter and Older, no Newer on page one
+
+    middle = await views.page_row(db, 1, "menu:favourites", {}, 1, 12)
+    assert len(middle[0]) == 3
+
+    last = await views.page_row(db, 1, "menu:favourites", {}, 2, 12)
+    assert len(last[0]) == 2  # Newer and counter, no Older on the last page
+
+    # The counter is inert; the arrows carry the page number.
+    action, payload, _owner = await db.resolve_callback(last[0][0].data.decode())
+    assert action == "menu:favourites"
+    assert payload["p"] == 1
+    assert (await db.resolve_callback(last[0][1].data.decode()))[0] == "noop"

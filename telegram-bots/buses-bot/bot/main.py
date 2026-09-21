@@ -164,7 +164,10 @@ class BusesBot:
         if origin == "fav":
             return ("Favourites", "menu:favourites", {})
         if origin == "search" and payload.get("q"):
-            return ("Back to results", "search:again", {"q": payload["q"]})
+            # Carry the page numbers so Back lands on the page the user left.
+            return ("Back to results", "search:again",
+                    {"q": payload["q"], "sp": payload.get("sp", 0),
+                     "rp": payload.get("rp", 0)})
         return None
 
     async def _favourite_for_stop(self, user_id: int, operator: str, stop_id: str) -> Any:
@@ -400,21 +403,32 @@ class BusesBot:
             ]
         )
 
-        buttons = []
-        for operator, stop, distance in nearby[:8]:
+        buttons = await self._nearby_buttons(nearby, user["user_id"], 0)
+        await self.send(event.chat_id, doc, buttons=buttons)
+        raise events.StopPropagation
+
+    async def _nearby_buttons(
+        self, nearby: list[tuple[str, Any, float]], user_id: int, page: int
+    ) -> list[list[Any]]:
+        """The keyboard for the 'stops near you' list, one page at a time."""
+
+        page = views.clamp_page(page, len(nearby))
+        buttons: list[list[Any]] = []
+        for operator, stop, distance in views.page_slice(nearby, page):
             label = stop.stop_name if len(stop.stop_name) <= 26 else stop.stop_name[:25] + "…"
             buttons.append(
                 [
                     await views.cb(
                         self.db, f"🚏 {label} · {int(distance)}m", "stop:view",
-                        {"op": operator, "stop": stop.stop_id}, user["user_id"],
+                        {"op": operator, "stop": stop.stop_id}, user_id,
                     )
                 ]
             )
-
-        buttons.append(await views.nav_row(self.db, user["user_id"]))
-        await self.send(event.chat_id, doc, buttons=buttons)
-        raise events.StopPropagation
+        buttons.extend(
+            await views.page_row(self.db, user_id, "nearby", {}, page, len(nearby))
+        )
+        buttons.append(await views.nav_row(self.db, user_id))
+        return buttons
 
     async def on_text(self, event: Any) -> None:
         """Treat any other message as a search, which is the main entry point."""
@@ -480,6 +494,36 @@ class BusesBot:
                                  payload: dict[str, Any], user: Any) -> None:
         user_id = user["user_id"]
 
+        # The page counter is a label, not a destination. Answering the query
+        # is what stops the button spinning.
+        if action == "noop":
+            await event.answer()
+            return
+
+        if action == "nearby":
+            lat, lon = user["last_lat"], user["last_lon"]
+            if lat is None or lon is None:
+                await event.answer(
+                    "Share your location again to see nearby stops.", alert=True
+                )
+                return
+            await event.answer()
+            nearby = await self.gtfs.nearby_all(
+                float(lat), float(lon), self.settings.nearby_radius_metres
+            )
+            doc = RichDoc().heading("Stops near you", 3)
+            doc.bullets(
+                [
+                    f"{b(stop.stop_name)} · {int(distance)} m · {i(operator_label(operator))}"
+                    for operator, stop, distance in nearby
+                ]
+            )
+            buttons = await self._nearby_buttons(
+                nearby, user_id, int(payload.get("p", 0))
+            )
+            await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
         # -- menu ---------------------------------------------------------
         if action == "menu:home":
             await event.answer()
@@ -523,8 +567,22 @@ class BusesBot:
         if action == "menu:favourites":
             await event.answer()
             favourites = await self.db.list_favourites(user_id)
-            doc, buttons = await views.favourites_doc(self.db, favourites, user_id)
+            doc, buttons = await views.favourites_doc(
+                self.db, favourites, user_id, page=int(payload.get("p", 0))
+            )
             await self.reply_to_button(event, doc, buttons=buttons)
+            return
+
+        if action == "fav:removing":
+            await event.answer()
+            favourites = await self.db.list_favourites(user_id)
+            doc, buttons = await views.favourites_doc(
+                self.db, favourites, user_id, for_removal=True,
+                page=int(payload.get("p", 0)),
+            )
+            if favourites:
+                doc.para("Tap an entry to remove it.")
+            await self.reply_to_button(event, doc, buttons=buttons or None)
             return
 
         if action == "menu:subs":
@@ -536,13 +594,17 @@ class BusesBot:
             await self.reply_to_button(event, doc, buttons=buttons)
             return
 
-        if action == "search:again":
+        # Paging either list re-runs the search and redraws the same screen,
+        # so all three share one branch.
+        if action in ("search:again", "search:stops", "search:routes"):
             query = payload.get("q", "")
             await event.answer()
             stops = await self.gtfs.search_all_stops(query)
             routes = await self.gtfs.search_all_routes(query)
             doc, buttons = await views.search_results_doc(
-                self.db, query, stops, routes, user_id
+                self.db, query, stops, routes, user_id,
+                stop_page=int(payload.get("sp", 0)),
+                route_page=int(payload.get("rp", 0)),
             )
             await self.reply_to_button(event, doc, buttons=buttons)
             return

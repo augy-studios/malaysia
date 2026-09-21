@@ -70,6 +70,19 @@ log = logging.getLogger(__name__)
 CHOICE_LIMIT = 8
 # How far out /nearby will look for river gauges.
 NEARBY_STATION_LIMIT = 5
+# How many entries one page of a paginated list shows.
+PAGE_SIZE = 5
+# How many bulletins the earthquake table lists, and so how many the buttons
+# page through.
+QUAKE_LIST_LIMIT = 8
+
+
+def _clamp_page(page: int, total: int, per_page: int = PAGE_SIZE) -> int:
+    """Keep a page number inside a list that may have shrunk since the tap."""
+
+    if total <= 0:
+        return 0
+    return max(0, min(page, (total - 1) // per_page))
 
 
 class WeatherBot:
@@ -208,6 +221,32 @@ class WeatherBot:
         if home:
             row.append(Button.inline("Main menu", await self._cb("home")))
         return row
+
+    async def page_row(
+        self, action: str, page: int, total: int, per_page: int = PAGE_SIZE
+    ) -> list[list[Any]]:
+        """The 'Newer / Older' row for a list that does not fit one screen.
+
+        Telegram keyboards get unusable past a handful of rows, so long lists
+        are shown a page at a time. Returns nothing when everything already
+        fits, so callers can append it unconditionally.
+        """
+
+        if total <= per_page:
+            return []
+
+        last = (total - 1) // per_page
+        row: list[Any] = []
+        if page > 0:
+            row.append(
+                Button.inline("« Newer", await self._cb(action, p=page - 1))
+            )
+        row.append(Button.inline(f"Page {page + 1} of {last + 1}", await self._cb("noop")))
+        if page < last:
+            row.append(
+                Button.inline("Older »", await self._cb(action, p=page + 1))
+            )
+        return [row]
 
     async def main_menu_buttons(self) -> list[list[Any]]:
         """The home keyboard, also used as the Back target from most screens."""
@@ -394,11 +433,12 @@ class WeatherBot:
 
     # -- screens ----------------------------------------------------------
 
-    async def _show_weather_menu(self, event: Any) -> None:
+    async def _show_weather_menu(self, event: Any, page: int = 0) -> None:
         """Offer favourites and a prompt, rather than a bare 'send a name'."""
 
         user = await self._user_of(event)
         favourites = await self.db.list_favourites(int(user["user_id"]), "location")
+        page = _clamp_page(page, len(favourites))
 
         doc = RichDoc()
         doc.heading("Forecasts", level=2)
@@ -416,8 +456,9 @@ class WeatherBot:
 
         rows = [
             [Button.inline(str(fav["label"]), await self._cb("loc", r=str(fav["ref_id"])))]
-            for fav in favourites[:CHOICE_LIMIT]
+            for fav in favourites[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
         ]
+        rows.extend(await self.page_row("menu_weather", page, len(favourites)))
         rows.append(await self.nav(back="home"))
         await self._render(event, doc, rows)
 
@@ -589,15 +630,20 @@ class WeatherBot:
         rows.append(await self.nav(back="home"))
         await self._render(event, warnings_doc(warnings, snapshot, place), rows)
 
-    async def _show_quakes(self, event: Any) -> None:
+    async def _show_quakes(self, event: Any, page: int = 0) -> None:
         try:
             snapshot = await self.feeds.quakes()
         except FeedError as exc:
             await self._feed_error(event, exc)
             return
 
+        # The table lists every bulletin it shows, so the buttons page through
+        # the same set rather than stopping silently at the first few.
+        listed = list(snapshot.quakes[:QUAKE_LIST_LIMIT])
+        page = _clamp_page(page, len(listed))
+
         rows: list[list[Any]] = []
-        for quake in snapshot.quakes[:5]:
+        for quake in listed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
             rows.append(
                 [
                     Button.inline(
@@ -606,11 +652,12 @@ class WeatherBot:
                     )
                 ]
             )
+        rows.extend(await self.page_row("quakes", page, len(listed)))
         rows.append([Button.inline("Refresh", await self._cb("quakes", f=1))])
         rows.append(await self.nav(back="home"))
-        await self._render(event, quakes_doc(snapshot.quakes, snapshot), rows)
+        await self._render(event, quakes_doc(listed, snapshot), rows)
 
-    async def _show_floods(self, event: Any) -> None:
+    async def _show_floods(self, event: Any, page: int = 0) -> None:
         try:
             snapshot = await self.feeds.flood()
         except FeedError as exc:
@@ -621,9 +668,10 @@ class WeatherBot:
             (st for st in snapshot.stations if st.is_elevated),
             key=lambda st: (-st.rank, st.name),
         )
+        page = _clamp_page(page, len(elevated))
 
         rows: list[list[Any]] = []
-        for station in elevated[:5]:
+        for station in elevated[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
             rows.append(
                 [
                     Button.inline(
@@ -632,6 +680,7 @@ class WeatherBot:
                     )
                 ]
             )
+        rows.extend(await self.page_row("floods", page, len(elevated)))
         rows.append([Button.inline("Refresh", await self._cb("floods", f=1))])
         rows.append(await self.nav(back="home"))
         await self._render(event, flood_overview_doc(snapshot.stations, snapshot), rows)
@@ -749,12 +798,15 @@ class WeatherBot:
 
         await self._render(event, nearby_doc(location, nearest, flood), rows)
 
-    async def _show_favourites(self, event: Any, removing: bool = False) -> None:
+    async def _show_favourites(
+        self, event: Any, removing: bool = False, page: int = 0
+    ) -> None:
         user = await self._user_of(event)
         favourites = await self.db.list_favourites(int(user["user_id"]))
+        page = _clamp_page(page, len(favourites))
 
         rows: list[list[Any]] = []
-        for fav in favourites[:CHOICE_LIMIT]:
+        for fav in favourites[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
             if removing:
                 rows.append(
                     [
@@ -775,6 +827,14 @@ class WeatherBot:
                         )
                     ]
                 )
+
+        # The removal list and the browse list are separate screens, so each
+        # pages back to itself.
+        rows.extend(
+            await self.page_row(
+                "unfav" if removing else "favourites", page, len(favourites)
+            )
+        )
 
         if favourites and not removing:
             rows.append([Button.inline("Remove one", await self._cb("unfav"))])
@@ -903,6 +963,11 @@ class WeatherBot:
         user = await self._user_of(event)
         user_id = int(user["user_id"])
 
+        if action == "noop":
+            # The page counter is a label, not a destination. The caller
+            # answers the query, which stops the button spinning.
+            return
+
         if action == "home":
             await self._render(
                 event,
@@ -914,7 +979,7 @@ class WeatherBot:
             await self._render(event, about_doc(), [await self.nav(back="home")])
 
         elif action == "menu_weather":
-            await self._show_weather_menu(event)
+            await self._show_weather_menu(event, int(payload.get("p", 0)))
 
         elif action == "loc":
             location = await self.feeds.location_by_id(str(payload.get("r", "")))
@@ -931,7 +996,7 @@ class WeatherBot:
             await self._show_warnings(event, str(payload.get("p", "")))
 
         elif action == "quakes":
-            await self._show_quakes(event)
+            await self._show_quakes(event, int(payload.get("p", 0)))
 
         elif action == "quake":
             snapshot = await self.feeds.quakes()
@@ -947,7 +1012,7 @@ class WeatherBot:
                 )
 
         elif action == "floods":
-            await self._show_floods(event)
+            await self._show_floods(event, int(payload.get("p", 0)))
 
         elif action == "stn":
             station = await self.feeds.station_by_id(str(payload.get("r", "")))
@@ -957,10 +1022,12 @@ class WeatherBot:
                 await self._open_station(event, station)
 
         elif action == "favourites":
-            await self._show_favourites(event)
+            await self._show_favourites(event, page=int(payload.get("p", 0)))
 
         elif action == "unfav":
-            await self._show_favourites(event, removing=True)
+            await self._show_favourites(
+                event, removing=True, page=int(payload.get("p", 0))
+            )
 
         elif action == "fav_loc":
             added = await self.db.add_favourite(

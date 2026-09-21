@@ -795,3 +795,23 @@ def test_a_failed_edit_still_reaches_the_user():
 
     assert rich.calls == ["edit", "send"]
     assert result == "sent"
+
+
+def test_paging_keeps_a_stale_page_inside_the_list():
+    """A page number outliving the list it came from must still render."""
+
+    from bot.main import PAGE_SIZE, _clamp_page
+
+    items = list(range(13))
+
+    assert _clamp_page(0, len(items)) == 0
+    assert items[:PAGE_SIZE] == [0, 1, 2, 3, 4]
+
+    # Tapping "Older" on a list that has since shrunk lands on the last page
+    # rather than an empty screen.
+    assert _clamp_page(99, len(items)) == 2
+    assert _clamp_page(-1, len(items)) == 0
+    assert _clamp_page(3, 0) == 0
+
+    # A list that divides exactly has no trailing empty page.
+    assert _clamp_page(2, 10) == 1

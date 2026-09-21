@@ -23,6 +23,8 @@ from .timeutils import (
 )
 
 MAX_TIMES_SHOWN = 12
+# How many entries one page of a paginated keyboard shows.
+PAGE_SIZE = 5
 
 
 async def cb(db: Any, label: str, action: str, payload: dict[str, Any] | None = None,
@@ -70,6 +72,49 @@ async def with_nav(
     rows = list(buttons)
     rows.append(await nav_row(db, user_id, back))
     return rows
+
+
+def clamp_page(page: int, total: int, per_page: int = PAGE_SIZE) -> int:
+    """Keep a page number inside a list that may have shrunk since the tap."""
+
+    if total <= 0:
+        return 0
+    return max(0, min(page, (total - 1) // per_page))
+
+
+def page_slice(items: Sequence[Any], page: int, per_page: int = PAGE_SIZE) -> Sequence[Any]:
+    """The items belonging on `page`."""
+
+    return items[page * per_page:(page + 1) * per_page]
+
+
+async def page_row(
+    db: Any,
+    user_id: int,
+    action: str,
+    payload: dict[str, Any],
+    page: int,
+    total: int,
+    per_page: int = PAGE_SIZE,
+) -> list[list[Button]]:
+    """The 'Newer / Older' row for a list that does not fit one screen.
+
+    A Telegram keyboard stops being usable past a handful of rows, so long
+    lists are shown a page at a time. Returns nothing when everything already
+    fits, so callers can extend with it unconditionally.
+    """
+
+    if total <= per_page:
+        return []
+
+    last = (total - 1) // per_page
+    row: list[Button] = []
+    if page > 0:
+        row.append(await cb(db, "◀ Newer", action, {**payload, "p": page - 1}, user_id))
+    row.append(await cb(db, f"{page + 1}/{last + 1}", "noop", {}, user_id))
+    if page < last:
+        row.append(await cb(db, "Older ▶", action, {**payload, "p": page + 1}, user_id))
+    return [row]
 
 
 async def menu_doc(db: Any, user_id: int) -> tuple[RichDoc, list[list[Button]]]:
@@ -177,9 +222,17 @@ async def search_results_doc(
     stops: Sequence[tuple[str, Stop]],
     routes: Sequence[tuple[str, Route]],
     user_id: int,
+    stop_page: int = 0,
+    route_page: int = 0,
 ) -> tuple[RichDoc, list[list[Button]]]:
     doc = RichDoc()
     doc.heading(f"Results for {query}", 3)
+
+    # Stops and routes page independently, so moving through one list does not
+    # reset the other.
+    stop_page = clamp_page(stop_page, len(stops))
+    route_page = clamp_page(route_page, len(routes))
+    page_payload = {"q": query[:64], "sp": stop_page, "rp": route_page}
 
     buttons: list[list[Button]] = []
 
@@ -191,32 +244,40 @@ async def search_results_doc(
         return doc, await with_nav(db, buttons, user_id)
 
     if stops:
+        shown_stops = page_slice(stops, stop_page)
         doc.heading("Stops", 4)
-        rows = [
-            f"{b(stop.stop_name)} {i(operator_label(operator))}"
-            for operator, stop in stops[:8]
-        ]
-        doc.bullets(rows)
-        for operator, stop in stops[:8]:
+        doc.bullets(
+            [
+                f"{b(stop.stop_name)} {i(operator_label(operator))}"
+                for operator, stop in shown_stops
+            ]
+        )
+        for operator, stop in shown_stops:
             label = stop.stop_name if len(stop.stop_name) <= 30 else stop.stop_name[:29] + "…"
             # The query rides along so the stop card can return to these results.
             buttons.append(
                 [
                     await cb(db, f"🚏 {label}", "stop:view",
                              {"op": operator, "stop": stop.stop_id,
-                              "from": "search", "q": query[:64]}, user_id)
+                              "from": "search", "q": query[:64],
+                              "sp": stop_page, "rp": route_page}, user_id)
                 ]
             )
+        buttons.extend(
+            await page_row(db, user_id, "search:stops", page_payload,
+                           stop_page, len(stops))
+        )
 
     if routes:
+        shown_routes = page_slice(routes, route_page)
         doc.heading("Routes", 4)
         doc.bullets(
             [
                 f"{b(route.display)} {i(operator_label(operator))}"
-                for operator, route in routes[:8]
+                for operator, route in shown_routes
             ]
         )
-        for operator, route in routes[:6]:
+        for operator, route in shown_routes:
             label = route.display if len(route.display) <= 30 else route.display[:29] + "…"
             buttons.append(
                 [
@@ -224,6 +285,10 @@ async def search_results_doc(
                              {"op": operator, "route": route.route_id}, user_id)
                 ]
             )
+        buttons.extend(
+            await page_row(db, user_id, "search:routes", page_payload,
+                           route_page, len(routes))
+        )
 
     return doc, await with_nav(db, buttons, user_id)
 
@@ -516,7 +581,8 @@ def live_doc(
 
 
 async def favourites_doc(
-    db: Any, favourites: Sequence[Any], user_id: int, for_removal: bool = False
+    db: Any, favourites: Sequence[Any], user_id: int, for_removal: bool = False,
+    page: int = 0,
 ) -> tuple[RichDoc, list[list[Button]]]:
     doc = RichDoc()
     doc.heading("Your favourites", 3)
@@ -536,8 +602,9 @@ async def favourites_doc(
         ]
     )
 
+    page = clamp_page(page, len(favourites))
     buttons: list[list[Button]] = []
-    for row in favourites:
+    for row in page_slice(favourites, page):
         label = row["stop_name"]
         if len(label) > 28:
             label = label[:27] + "…"
@@ -553,6 +620,14 @@ async def favourites_doc(
                               "from": "fav"}, user_id)
                 ]
             )
+
+    # The removal list and the browse list are separate screens, so each pages
+    # back to itself.
+    buttons.extend(
+        await page_row(db, user_id,
+                       "fav:removing" if for_removal else "menu:favourites",
+                       {}, page, len(favourites))
+    )
 
     return doc, await with_nav(db, buttons, user_id)
 
