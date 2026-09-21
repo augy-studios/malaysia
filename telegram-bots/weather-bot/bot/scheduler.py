@@ -456,6 +456,10 @@ class Scheduler:
             if user is not None:
                 await self.bot.send(user["chat_id"], doc)
 
+        # Each outage is reported once. The flag is cleared by record_feed_ok,
+        # so the next failure after a recovery is reported again.
+        await self.db.mark_feed_notified([feed for feed, _ in stale])
+
 
 def _epoch_of(quake: Quake) -> float:
     from .timeutils import parse_iso

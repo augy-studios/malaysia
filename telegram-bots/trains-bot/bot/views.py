@@ -347,8 +347,11 @@ async def stop_doc(
     row: list[Button] = []
 
     if is_favourite and favourite_id is not None:
+        # The stop travels with the removal so the handler can redraw this
+        # card in place rather than sending the user to the favourites list.
         row.append(await cb(db, "★ Remove favourite", "fav:remove",
-                            {"fid": favourite_id}, user_id))
+                            {"fid": favourite_id, "op": operator,
+                             "stop": stop.stop_id}, user_id))
     else:
         row.append(await cb(db, "☆ Add to favourites", "fav:add",
                             {"op": operator, "stop": stop.stop_id}, user_id))

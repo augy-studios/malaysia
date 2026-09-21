@@ -944,12 +944,25 @@ class TrainsBot:
         if action == "fav:remove":
             removed = await self.db.remove_favourite(user_id, int(payload["fid"]))
             await event.answer("Removed" if removed else "That favourite was already gone")
-            if removed:
-                favourites = await self.db.list_favourites(user_id)
-                doc, buttons = await views.favourites_doc(
-                    self.db, favourites, user_id, for_removal=True
+            if not removed:
+                return
+
+            # Tapped on a station card: redraw that card so the star flips back
+            # to "Add". Only the removal list sends the user to the list.
+            if payload.get("stop"):
+                rendered = await self._render_stop(
+                    user, payload["op"], payload["stop"]
                 )
-                await self.reply_to_button(event, doc, buttons=buttons or None)
+                if rendered is not None:
+                    doc, buttons = rendered
+                    await self.reply_to_button(event, doc, buttons=buttons)
+                    return
+
+            favourites = await self.db.list_favourites(user_id)
+            doc, buttons = await views.favourites_doc(
+                self.db, favourites, user_id, for_removal=True
+            )
+            await self.reply_to_button(event, doc, buttons=buttons or None)
             return
 
         # -- subscriptions ------------------------------------------------

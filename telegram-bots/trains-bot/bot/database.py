@@ -144,6 +144,11 @@ MIGRATIONS: tuple[tuple[str, str], ...] = (
 )
 
 
+# How many button tokens to memoise. A few thousand covers every menu a busy
+# session draws while staying negligible in memory.
+_TOKEN_CACHE_MAX = 4096
+
+
 def _now() -> int:
     return int(time.time())
 
@@ -154,11 +159,20 @@ class Database:
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self._db: aiosqlite.Connection | None = None
+        # (action, payload, user_id) -> token. Callback rows are never deleted,
+        # so a token held here stays valid for the life of the process.
+        self._callback_tokens: dict[tuple[str, str, int | None], str] = {}
 
     async def connect(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._db = await aiosqlite.connect(self.path)
         self._db.row_factory = aiosqlite.Row
+        # Rendering one card writes a callback row per button, and every write
+        # commits. On the default rollback journal each of those is a full
+        # fsync, which is what made replies lag behind the other bots. WAL with
+        # NORMAL sync keeps the data safe across a crash and drops the fsync.
+        await self._db.execute("PRAGMA journal_mode = WAL")
+        await self._db.execute("PRAGMA synchronous = NORMAL")
         # Duplicates left by an older build have to go before the schema runs,
         # because the schema creates the unique index that they violate.
         await self._dedupe_before_schema()
@@ -533,11 +547,21 @@ class Database:
         """
 
         body = json.dumps(payload or {}, sort_keys=True, separators=(",", ":"))
+
+        # Tokens are stable once stored, so a render of a menu the bot has
+        # already drawn can answer from memory. Without this every button on
+        # every card costs a query, and a station list has dozens.
+        memo_key = (action, body, user_id)
+        cached = self._callback_tokens.get(memo_key)
+        if cached is not None:
+            return cached
+
         existing = await self._fetchone(
             "SELECT token FROM callbacks WHERE action = ? AND payload = ? AND user_id IS ?",
             (action, body, user_id),
         )
         if existing:
+            self._remember_token(memo_key, existing["token"])
             return existing["token"]
 
         # Two concurrent renders of the same menu would both miss the SELECT
@@ -553,7 +577,17 @@ class Database:
             "SELECT token FROM callbacks WHERE action = ? AND payload = ? AND user_id IS ?",
             (action, body, user_id),
         )
-        return row["token"] if row else token
+        stored = row["token"] if row else token
+        self._remember_token(memo_key, stored)
+        return stored
+
+    def _remember_token(self, key: tuple[str, str, int | None], token: str) -> None:
+        """Memoise a token, discarding the oldest once the cache is full."""
+
+        if len(self._callback_tokens) >= _TOKEN_CACHE_MAX:
+            for stale_key in list(self._callback_tokens)[: _TOKEN_CACHE_MAX // 4]:
+                del self._callback_tokens[stale_key]
+        self._callback_tokens[key] = token
 
     async def resolve_callback(self, token: str) -> tuple[str, dict[str, Any], int | None] | None:
         row = await self._fetchone("SELECT * FROM callbacks WHERE token = ?", (token,))
