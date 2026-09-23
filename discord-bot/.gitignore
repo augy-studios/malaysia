@@ -1,0 +1,32 @@
+# Secrets. The bot token lives here, so this must never be committed.
+.env
+.env.*
+!.env.example
+
+# The SQLite database, its write-ahead log, and the single-instance lock
+data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs, including anything piped out of the bot with tee
+*.log
+logs/
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

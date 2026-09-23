@@ -1,0 +1,14 @@
+# Pinned exactly. Installs cleanly on a fresh Debian 13 box with:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# 2.4 is the first release with allowed_contexts and allowed_installs on the
+# command tree, which user installs need. DynamicItem, which keeps buttons
+# alive across restarts, arrived in 2.3.
+discord.py==2.7.1
+aiosqlite==0.22.1
+httpx==0.28.1
+python-dotenv==1.2.3
+
+# Test only, harmless in production
+pytest==9.1.1
+pytest-asyncio==1.4.0
