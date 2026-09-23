@@ -65,10 +65,3 @@ def loading_screen(what: str) -> Screen:
         f"The {what} timetable is still loading after a restart. Try again in a minute.",
         "Still warming up",
     )
-
-
-def is_dm_with_bot(interaction: discord.Interaction) -> bool:
-    """True in the bot's own DM. A DM between friends, reached through a user
-    install, is a private channel instead, and so is a group DM."""
-
-    return bool(interaction.context.dm_channel)

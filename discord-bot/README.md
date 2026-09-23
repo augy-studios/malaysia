@@ -112,7 +112,7 @@ discord-bot/
 │       ├── extras.py    /prayer, /fuel, /forex
 │       └── account.py   /fav, /alerts, /settings, /stats
 └── tests/
-    └── test_bot.py      25 offline tests
+    └── test_bot.py      26 offline tests
 ```
 
 ### Buttons that never expire
@@ -339,7 +339,7 @@ restart re-syncs the commands, and every old button keeps working.
 .venv/bin/python -m pytest
 ```
 
-25 tests, none of which touch the network or Discord. They cover the feed
+26 tests, none of which touch the network or Discord. They cover the feed
 quirks above, button tokens and scheduled jobs surviving a reopened database,
 the dispatcher (owner edits in place, others get a private copy, personal
 menus refuse others, unknown tokens say so), and every command's install and

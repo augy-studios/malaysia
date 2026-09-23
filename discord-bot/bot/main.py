@@ -126,10 +126,25 @@ class MalaysiaBot(discord.Client):
 
     async def on_ready(self) -> None:
         log.info("Connected as %s, in %d servers", self.user, len(self.guilds))
+        # on_ready also fires after a gateway reconnect, which resets presence.
+        await self.update_presence()
+
+    async def on_guild_join(self, guild: discord.Guild) -> None:
+        await self.update_presence()
 
     async def on_guild_remove(self, guild: discord.Guild) -> None:
         await self.db.delete_guild_alerts(guild.id)
         log.info("Removed from %s, its alert channel is forgotten", guild.id)
+        await self.update_presence()
+
+    async def update_presence(self) -> None:
+        """The status under the bot's name, counting the servers it is in.
+
+        User installs are not counted: Discord does not tell a bot how many
+        accounts have added it.
+        """
+
+        await self.change_presence(activity=discord.CustomActivity(name=presence_text(len(self.guilds))))
 
     async def on_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
@@ -198,6 +213,10 @@ class MalaysiaBot(discord.Client):
             for client in (self.weather, self.transit, self.extras):
                 await client.close()
         await super().close()
+
+
+def presence_text(guilds: int) -> str:
+    return f"Truly Asia in {guilds} guild{'' if guilds == 1 else 's'}"
 
 
 # ---------------------------------------------------------------------------

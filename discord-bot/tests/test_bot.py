@@ -498,3 +498,10 @@ async def test_pressing_buttons_after_a_restart(db):
     lost = _interaction(bot, 42)
     await dispatch(lost, "never-issued")
     assert lost.response.calls == [("send_message", {"args": (EXPIRED,), "ephemeral": True})]
+
+
+def test_presence_counts_guilds():
+    from bot.main import presence_text
+
+    assert presence_text(1) == "Truly Asia in 1 guild"
+    assert presence_text(12) == "Truly Asia in 12 guilds"

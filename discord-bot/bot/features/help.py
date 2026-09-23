@@ -10,7 +10,7 @@ from discord import app_commands
 from .. import config
 from ..ui import BLUE, Link, Screen, add_field, embed, send_screen
 from .account import invite_url
-from .common import is_dm_with_bot, mention
+from .common import mention
 
 SECTIONS = (
     (
@@ -104,8 +104,9 @@ def help_screen(bot: Any) -> Screen:
 @app_commands.command(name="help", description="What this does, every command, and links to the web app")
 async def help_command(interaction: discord.Interaction) -> None:
     bot: Any = interaction.client
-    # Only the asker needs the help, except in their own DM with the bot.
-    await send_screen(interaction, help_screen(bot), ephemeral=not is_dm_with_bot(interaction))
+    # Posted for everyone in the channel to see, so it doubles as an
+    # introduction when someone asks what the bot does.
+    await send_screen(interaction, help_screen(bot))
 
 
 __all__ = ["help_command", "help_screen"]
