@@ -30,6 +30,12 @@
       icon: 'bus',
       title: 'Buses',
       desc: 'Rapid KL/Penang/Kuantan and myBAS Johor Bahru bus schedules, plus live bus positions.'
+    },
+    {
+      href: '/prayer/',
+      icon: 'moonStar',
+      title: 'Prayer Times',
+      desc: 'JAKIM prayer times for every zone, with optional notifications at each prayer.'
     }
   ];
 

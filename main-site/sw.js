@@ -3,7 +3,7 @@
   browser compares this file byte for byte, so an unchanged version means no
   update is ever found and the update bar in js/update.js never shows.
 */
-const CACHE = "malaysia-boleh-v32";
+const CACHE = "malaysia-boleh-v33";
 const API_CACHE = "malaysia-boleh-api-v5";
 
 const ASSETS = [
@@ -16,6 +16,7 @@ const ASSETS = [
   "/js/ui.js",
   "/js/theme.js",
   "/js/update.js",
+  "/js/map-fullscreen.js",
   "/weather/",
   "/weather/index.html",
   "/weather/weather.css",
@@ -36,7 +37,13 @@ const ASSETS = [
   "/bus/index.html",
   "/bus/bus.css",
   "/bus/bus.js",
+  "/prayer/",
+  "/prayer/index.html",
+  "/prayer/prayer.css",
+  "/prayer/prayer.js",
+  "/prayer/prayer-alerts.js",
   "/MYB-main.png",
+  "/MYB-badge.png",
   "/MYB-192.png",
   "/MYB-512.png",
   "/favicon.ico",
@@ -83,6 +90,49 @@ self.addEventListener('message', event => {
   }
 });
 
+/* -- Prayer alerts, sent by the cron (api/cron/prayer-alerts.js) -- */
+
+self.addEventListener('push', event => {
+  let data = null;
+  try {
+    data = event.data && event.data.json();
+  } catch (e) { /* not ours */ }
+  if (!data || data.type !== 'prayer-alert') return;
+
+  // One tag, so the next prayer replaces the last notification rather than
+  // stacking; renotify still makes it heard.
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Prayer time', {
+      body: data.body || '',
+      tag: 'prayer-alert',
+      renotify: true,
+      icon: '/MYB-192.png',
+      // The status bar's icon. Android draws only its shape, so this is the
+      // crescent and star on a transparent background, not the app icon.
+      badge: '/MYB-badge.png',
+      data: { url: data.url || '/prayer/' }
+    })
+  );
+});
+
+// Tapping one opens the prayer page: in an open window if there is one,
+// otherwise a new one.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/prayer/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      const client = clients.find(c => new URL(c.url).origin === self.location.origin);
+      if (!client) return self.clients.openWindow(url);
+      // navigate() refuses a window this worker doesn't control; that one
+      // stays where it is, focused.
+      return client.focus()
+        .then(c => (c && c.url !== url ? c.navigate(url) : c))
+        .catch(() => client);
+    })
+  );
+});
+
 /* -- Fetch: strategy per route -- */
 
 self.addEventListener('fetch', event => {
@@ -90,6 +140,11 @@ self.addEventListener('fetch', event => {
     request
   } = event;
   const url = new URL(request.url);
+
+  // Alerts sign-up and the cron talk to the server and nothing else.
+  if (request.method !== 'GET' || url.pathname.startsWith('/api/push/') || url.pathname.startsWith('/api/cron/')) {
+    return;
+  }
 
   // API - network-first, falling back to last-known cached response when offline
   if (url.pathname.startsWith('/api/')) {

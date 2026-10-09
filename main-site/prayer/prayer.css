@@ -1,0 +1,312 @@
+/* ==========================================================================
+   Prayer times page - page-specific layout only.
+   Reuses .glass / .btn / .modal / .state-banner / .spinner from base.css.
+   ========================================================================== */
+
+.prayer-hero {
+  padding-top: 12px;
+}
+
+/* -- Next prayer card -- */
+
+.next-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  margin: 20px 0 24px;
+}
+
+.next-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.next-icon .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.next-body {
+  min-width: 0;
+}
+
+.next-headline {
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.next-sub {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+/* -- Toolbar -- */
+
+.prayer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.zone-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-width: 0;
+  flex: 1 1 280px;
+  max-width: 460px;
+}
+
+.zone-picker select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  width: 100%;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-right .btn [data-icon] {
+  display: inline-flex;
+}
+
+.toolbar-right .btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Alerts on: the bell takes the brand tint, so the state shows from the page. */
+#alertsBtn.is-on {
+  background: color-mix(in srgb, var(--brand) 45%, var(--surface-strong));
+  border-color: color-mix(in srgb, var(--brand-ink) 35%, var(--surface-border));
+}
+
+#alertsBtn.is-on svg {
+  color: var(--brand-ink);
+}
+
+/* -- Today's times -- */
+
+.times-card {
+  padding: 18px 20px;
+  margin: 18px 0 12px;
+}
+
+.times-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.times-head h2 {
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.times-hijri {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.times-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.times-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--surface-border);
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.times-row:first-child {
+  border-top: none;
+}
+
+.times-row-icon {
+  display: inline-flex;
+  color: var(--brand-ink);
+}
+
+.times-row-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.times-row-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.times-row-tag {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.times-row-time {
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+/* Imsak and Syuruk mark the edges of Subuh rather than being prayers. */
+.times-row.marker {
+  color: var(--muted);
+}
+
+.times-row.marker .times-row-time {
+  font-size: 0.95rem;
+}
+
+.times-row.current {
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  border-top-color: transparent;
+}
+
+.times-row.current + .times-row {
+  border-top-color: transparent;
+}
+
+.times-row.next .times-row-time {
+  color: var(--brand-ink);
+}
+
+.prayer-footnote {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+/* -- Alerts modal -- */
+
+.alerts-intro,
+.alerts-zone {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.alerts-zone strong {
+  color: var(--ink);
+  font-weight: normal;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.choice-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.choice-wide {
+  grid-column: 1 / -1;
+}
+
+.choice.active {
+  background: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  color: var(--brand-ink);
+}
+
+.alerts-toggle,
+.alerts-test {
+  justify-content: center;
+}
+
+.alerts-toggle {
+  margin-top: 6px;
+}
+
+.alerts-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.alerts-note[data-tone="bad"] {
+  color: var(--error);
+}
+
+@media (max-width: 560px) {
+  .next-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .prayer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .zone-picker {
+    flex-basis: auto;
+    max-width: none;
+  }
+
+  /* Both buttons keep their words here: an unlabelled pin and bell side by
+     side say too little. They share the row instead. */
+  .toolbar-right .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .toolbar-right .btn span.btn-label {
+    display: inline;
+  }
+}
+
+/* -- Dark mode: weaken the brand tint so --brand-ink stays readable on it -- */
+
+:root[data-mode="dark"] .next-icon,
+:root[data-mode="dark"] .times-row.current,
+:root[data-mode="dark"] .choice.active,
+:root[data-mode="dark"] #alertsBtn.is-on {
+  background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
+}

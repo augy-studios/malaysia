@@ -3,6 +3,12 @@
     "version": 2,
     "cleanUrls": true,
     "regions": ["sin1"],
+    "functions": {
+        "api/cron/prayer-alerts.js": { "maxDuration": 60 }
+    },
+    "crons": [
+        { "path": "/api/cron/prayer-alerts", "schedule": "* * * * *" }
+    ],
     "rewrites": [{
         "source": "/",
         "destination": "/"

@@ -12,10 +12,11 @@ Live at: https://malaysia.uwuapps.org
 - [Flood Alerts](https://malaysia.uwuapps.org/flood-alerts/): river water levels and flood warnings from JPS.
 - [Trains](https://malaysia.uwuapps.org/trains/): Rapid KL (LRT/MRT/monorail) and KTMB schedules, plus live KTMB train positions.
 - [Bus](https://malaysia.uwuapps.org/bus/): Rapid KL/Penang/Kuantan bus schedules and myBAS Johor Bahru schedules, plus live bus positions.
+- [Prayer Times](https://malaysia.uwuapps.org/prayer/): JAKIM e-Solat prayer times for all 60 zones, with optional push notifications.
 
 ## Upstream data sources
 
-All data originates from data.gov.my, a Malaysian government open-data initiative. None of these feeds require an API key:
+All data except prayer times originates from data.gov.my, a Malaysian government open-data initiative. Prayer times are JAKIM's e-Solat, via the open source mirror api.waktusolat.app. None of these feeds require an API key:
 
 - MET Malaysia weather forecast: https://api.data.gov.my/weather/forecast/
 - MET Malaysia weather warnings: https://api.data.gov.my/weather/warning/
@@ -28,6 +29,7 @@ All data originates from data.gov.my, a Malaysian government open-data initiativ
 - Prasarana bus live positions (GTFS-realtime): https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana
 - myBAS Johor Bahru GTFS (static): https://api.data.gov.my/gtfs-static/mybas-johor
 - myBAS Johor Bahru live positions (GTFS-realtime): https://api.data.gov.my/gtfs-realtime/vehicle-position/mybas-johor
+- JAKIM e-Solat prayer times and zones: https://api.waktusolat.app
 
 ## Notes for crawlers / agents
 

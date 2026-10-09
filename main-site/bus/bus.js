@@ -697,6 +697,12 @@
       attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
     }).addTo(liveMap);
     liveMarkersLayer = L.layerGroup().addTo(liveMap);
+    if (window.MapFullscreen) {
+      MapFullscreen.attach(liveMap, {
+        tabs: document.querySelectorAll(".bus-tabs .bus-tab"),
+        refresh: document.getElementById("liveRtRefresh"),
+      });
+    }
     return liveMap;
   }
 

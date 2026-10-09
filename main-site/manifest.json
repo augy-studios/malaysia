@@ -71,6 +71,12 @@
             "short_name": "Buses",
             "url": "/bus/",
             "description": "Rapid KL/Penang/Kuantan and myBAS Johor schedules and live positions"
+        },
+        {
+            "name": "Prayer Times",
+            "short_name": "Prayer",
+            "url": "/prayer/",
+            "description": "JAKIM prayer times and notifications"
         }
     ]
 }

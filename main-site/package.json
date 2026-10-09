@@ -1,0 +1,11 @@
+{
+  "name": "malaysia-boleh-site",
+  "private": true,
+  "description": "Malaysia Boleh at malaysia.uwuapps.org: a static site plus Vercel Functions in api/.",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

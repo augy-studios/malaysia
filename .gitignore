@@ -9,6 +9,7 @@ Thumbs.db
 
 # Vercel local
 .vercel/
+.env*.local
 
 # Dependencies (if any tooling is added later)
 node_modules/

@@ -30,4 +30,9 @@
         <changefreq>daily</changefreq>
         <priority>0.7</priority>
     </url>
+    <url>
+        <loc>https://malaysia.uwuapps.org/prayer/</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
 </urlset>
