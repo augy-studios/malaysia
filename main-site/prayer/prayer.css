@@ -274,6 +274,102 @@
   color: var(--error);
 }
 
+/* -- Kiblat modal -- */
+
+.qibla-intro,
+.qibla-bearing,
+.qibla-note {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.qibla-note:empty {
+  display: none;
+}
+
+.qibla-dial {
+  width: min(100%, 280px);
+  margin: 4px auto;
+  aspect-ratio: 1;
+}
+
+.qibla-dial svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.qibla-ring {
+  fill: var(--surface);
+  stroke: var(--surface-border);
+  stroke-width: 2;
+  transition: fill 0.2s ease;
+}
+
+.qibla-tick {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.qibla-tick.major {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+.qibla-letter {
+  fill: var(--muted);
+  font-size: 15px;
+}
+
+.qibla-letter.north {
+  fill: var(--error);
+}
+
+.qibla-needle {
+  stroke: var(--brand-ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.qibla-hub {
+  fill: var(--brand-ink);
+}
+
+/* The Kaaba is black whatever the theme; the outline keeps it visible in dark mode. */
+.qibla-kaaba-body {
+  fill: #1c1c1c;
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.qibla-kaaba-band {
+  fill: #d4af37;
+}
+
+.qibla-pointer {
+  fill: var(--ink);
+  transition: fill 0.2s ease;
+}
+
+.qibla-dial.aligned .qibla-ring {
+  fill: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+}
+
+.qibla-dial.aligned .qibla-pointer {
+  fill: var(--brand-ink);
+}
+
+.qibla-status {
+  text-align: center;
+  font-size: 1.2rem;
+  color: var(--ink);
+  min-height: 1.5em;
+}
+
+.qibla-dial.aligned + .qibla-status {
+  color: var(--brand-ink);
+}
+
 @media (max-width: 560px) {
   .next-card {
     flex-direction: column;
@@ -290,10 +386,19 @@
     max-width: none;
   }
 
-  /* Both buttons keep their words here: an unlabelled pin and bell side by
-     side say too little. They share the row instead. */
+  /* The buttons keep their words here: an unlabelled pin, compass and bell
+     side by side say too little. Location takes a row of its own, the other
+     two share the next. */
+  .toolbar-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #locateBtn {
+    grid-column: 1 / -1;
+  }
+
   .toolbar-right .btn {
-    flex: 1;
     justify-content: center;
   }
 
@@ -309,4 +414,8 @@
 :root[data-mode="dark"] .choice.active,
 :root[data-mode="dark"] #alertsBtn.is-on {
   background: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
+}
+
+:root[data-mode="dark"] .qibla-dial.aligned .qibla-ring {
+  fill: color-mix(in srgb, var(--brand) 15%, var(--surface-strong));
 }

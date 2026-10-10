@@ -113,6 +113,10 @@
                     <span data-icon="mapPin"></span>
                     <span class="btn-label">Use my location</span>
                 </button>
+                <button class="btn" id="qiblaBtn" type="button" aria-haspopup="dialog" aria-label="Qibla compass">
+                    <span data-icon="compass"></span>
+                    <span class="btn-label">Kiblat</span>
+                </button>
                 <button class="btn" id="alertsBtn" type="button" aria-haspopup="dialog" aria-label="Prayer alerts">
                     <span data-icon="bell"></span>
                     <span class="btn-label">Alerts</span>
@@ -200,12 +204,34 @@
         </div>
     </div>
 
+    <div class="modal-backdrop hidden" id="qiblaModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="qiblaModalTitle">
+            <div class="modal-head">
+                <h2 id="qiblaModalTitle">Kiblat</h2>
+                <button class="icon-btn small" type="button" data-close-modal="qiblaModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <p class="qibla-intro">Turn until the Kaaba lines up with the marker at the top.</p>
+            <div class="qibla-dial" id="qiblaDial">
+                <svg viewBox="0 0 200 200" aria-hidden="true">
+                    <g id="qiblaRose"></g>
+                    <polygon class="qibla-pointer" points="100,24 92,6 108,6" />
+                </svg>
+            </div>
+            <p class="qibla-status"><span id="qiblaTurn" aria-live="polite"></span> <span id="qiblaDeg"></span></p>
+            <p class="qibla-bearing" id="qiblaBearing"></p>
+            <p class="qibla-note" id="qiblaNote"></p>
+        </div>
+    </div>
+
     <script src="/js/icons.js"></script>
     <script src="/js/ui.js"></script>
     <script src="/js/theme.js"></script>
     <script src="/js/update.js"></script>
     <script src="/prayer/prayer.js"></script>
     <script src="/prayer/prayer-alerts.js"></script>
+    <script src="/prayer/prayer-qibla.js"></script>
 </body>
 
 </html>

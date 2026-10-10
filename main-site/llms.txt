@@ -12,7 +12,7 @@ Live at: https://malaysia.uwuapps.org
 - [Flood Alerts](https://malaysia.uwuapps.org/flood-alerts/): river water levels and flood warnings from JPS.
 - [Trains](https://malaysia.uwuapps.org/trains/): Rapid KL (LRT/MRT/monorail) and KTMB schedules, plus live KTMB train positions.
 - [Bus](https://malaysia.uwuapps.org/bus/): Rapid KL/Penang/Kuantan bus schedules and myBAS Johor Bahru schedules, plus live bus positions.
-- [Prayer Times](https://malaysia.uwuapps.org/prayer/): JAKIM e-Solat prayer times for all 60 zones, with optional push notifications.
+- [Prayer Times](https://malaysia.uwuapps.org/prayer/): JAKIM e-Solat prayer times for all 60 zones, with optional push notifications and a Qibla compass.
 
 ## Upstream data sources
 

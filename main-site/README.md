@@ -14,7 +14,7 @@ Live at: **<https://malaysia.uwuapps.org>**
 | `/flood-alerts/` | River water levels & flood warnings | JPS |
 | `/trains/` | Rapid KL (LRT/MRT/monorail) + KTMB schedules & live positions | Prasarana / KTMB |
 | `/bus/` | Rapid KL/Penang/Kuantan + myBAS Johor Bahru schedules & live positions | Prasarana / myBAS |
-| `/prayer/` | Prayer times for all 60 JAKIM zones + push notifications | JAKIM e-Solat, via [api.waktusolat.app](https://api.waktusolat.app) |
+| `/prayer/` | Prayer times for all 60 JAKIM zones + push notifications + Qibla compass | JAKIM e-Solat, via [api.waktusolat.app](https://api.waktusolat.app) |
 
 Every page fetches its data from this site's own `/api/*` serverless functions rather than calling upstream directly, so responses can be cached at the edge and shielded from upstream downtime, rate limits, or schema changes.
 
